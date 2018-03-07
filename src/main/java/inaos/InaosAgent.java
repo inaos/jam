@@ -4,13 +4,9 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
-import net.bytebuddy.dynamic.loading.ClassInjector;
-import net.bytebuddy.implementation.StubMethod;
-import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.utility.JavaModule;
 
 import java.lang.instrument.Instrumentation;
-import java.util.Collections;
 
 import static net.bytebuddy.matcher.ElementMatchers.declaresMethod;
 import static net.bytebuddy.matcher.ElementMatchers.isAnnotatedWith;
@@ -18,14 +14,16 @@ import static net.bytebuddy.matcher.ElementMatchers.isAnnotatedWith;
 public class InaosAgent {
 
     public static void premain(String argument, Instrumentation instrumentation) {
-        install(instrumentation, AgentBuilder.RedefinitionStrategy.DISABLED);
+        install(instrumentation, "dev".equals(argument), AgentBuilder.RedefinitionStrategy.DISABLED);
     }
 
     public static void agentmain(String argument, Instrumentation instrumentation) {
-        install(instrumentation, AgentBuilder.RedefinitionStrategy.RETRANSFORMATION);
+        install(instrumentation, "dev".equals(argument), AgentBuilder.RedefinitionStrategy.RETRANSFORMATION);
     }
 
-    private static void install(Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
+    private static void install(Instrumentation instrumentation,
+                                final boolean devMode,
+                                AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
         new AgentBuilder.Default()
                 .with(redefinitionStrategy)
                 .disableClassFormatChanges()
@@ -37,10 +35,11 @@ public class InaosAgent {
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
-                        return builder
-                                .method(isAnnotatedWith(Accellerate.class))
-                                .intercept(Advice.to(ExampleAdvice.class)
-                                        .wrap(StubMethod.INSTANCE));
+                        return builder.visit(Advice
+                                .withCustomMapping()
+                                .bind(DevMode.class, devMode)
+                                .to(EnterAdvice.class, ExampleExitAdvice.class)
+                                .on(isAnnotatedWith(Accellerate.class)));
                     }
                 }).installOn(instrumentation);
     }
