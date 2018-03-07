@@ -29,6 +29,7 @@ public class InaosAgent {
         new AgentBuilder.Default()
                 .with(redefinitionStrategy)
                 .disableClassFormatChanges()
+//                .with(AgentBuilder.Listener.StreamWriting.toSystemError())
                 .type(declaresMethod(isAnnotatedWith(Accellerate.class)))
                 .transform(new AgentBuilder.Transformer() {
                     @Override
