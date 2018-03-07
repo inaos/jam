@@ -1,4 +1,4 @@
-package inaos;
+package com.inaos.iamj;
 
 import java.io.Serializable;
 import java.util.ArrayList;

@@ -1,4 +1,4 @@
-package inaos;
+package com.inaos.iamj;
 
 import net.bytebuddy.asm.Advice;
 
