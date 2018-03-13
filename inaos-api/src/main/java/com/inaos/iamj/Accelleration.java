@@ -12,7 +12,12 @@ public @interface Accelleration {
 
     Class<?>[] parameters();
 
-    String[] libraries() default {};
+    Library[] libraries() default {};
 
-    Class<?>[] dispatchers() default {};
+    @interface Library {
+
+        Class<?> dispatcher();
+
+        String binary();
+    }
 }

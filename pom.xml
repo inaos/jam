@@ -19,6 +19,6 @@
     <properties>
         <maven.compiler.target>1.6</maven.compiler.target>
         <maven.compiler.source>1.6</maven.compiler.source>
-        <bytebuddy.version>1.7.11</bytebuddy.version>
+        <bytebuddy.version>1.8.0</bytebuddy.version>
     </properties>
 </project>

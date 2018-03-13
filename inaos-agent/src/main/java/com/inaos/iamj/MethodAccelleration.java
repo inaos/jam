@@ -1,19 +1,21 @@
 package com.inaos.iamj;
 
+import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.annotation.AnnotationDescription;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.ClassFileLocator;
+import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.pool.TypePool;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -21,15 +23,19 @@ import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
 
-    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, DISPATCHERS, LIBRARIES;
+    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, DISPATCHER, BINARY, SYSTEM_LOAD;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Accelleration.class);
         TYPE = accelleration.getDeclaredMethods().filter(named("type")).getOnly();
         METHOD = accelleration.getDeclaredMethods().filter(named("method")).getOnly();
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
-        DISPATCHERS = accelleration.getDeclaredMethods().filter(named("dispatchers")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
+        TypeDescription library = new TypeDescription.ForLoadedType(Accelleration.Library.class);
+        DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
+        BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
+        TypeDescription system = new TypeDescription.ForLoadedType(System.class);
+        SYSTEM_LOAD = system.getDeclaredMethods().filter(named("load")).getOnly();
     }
 
     static List<MethodAccelleration> findAll(URL url) {
@@ -68,50 +74,60 @@ class MethodAccelleration {
 
     private final TypeDescription typeDescription;
 
-    private final Advice advice;
-
-    private final Map<TypeDescription, byte[]> injection = new HashMap<TypeDescription, byte[]>();
-
-    private final List<String> libraries;
+    private final ClassFileLocator classFileLocator;
 
     private final ClassLoader classLoader;
 
     private MethodAccelleration(TypeDescription typeDescription, ClassFileLocator classFileLocator, ClassLoader classLoader) throws IOException {
         this.typeDescription = typeDescription;
-        advice = Advice.withCustomMapping()
-                .bind(DevMode.class, false) // TODO: Resolve dev mode
-                .to(new TypeDescription.ForLoadedType(EnterAdvice.class), typeDescription, classFileLocator);
-        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Accelleration.class);
-        for (TypeDescription type : annotation.getValue(DISPATCHERS).resolve(TypeDescription[].class)) {
-            injection.put(type, classFileLocator.locate(type.getName()).resolve());
-        }
-        libraries = Arrays.asList(annotation.getValue(LIBRARIES).resolve(String[].class));
+        this.classFileLocator = classFileLocator;
         this.classLoader = classLoader;
     }
 
-    public Advice getAdvice() {
-        return advice;
+    Advice advice(boolean devMode) {
+        return Advice.withCustomMapping()
+                .bind(DevMode.class, devMode)
+                .to(new TypeDescription.ForLoadedType(EnterAdvice.class), typeDescription, classFileLocator);
     }
 
-    public Map<TypeDescription, byte[]> injection() {
-        return injection;
-    }
-
-    public List<String> libraries() {
-        return libraries;
-    }
-
-    public ElementMatcher<TypeDescription> type() {
+    ElementMatcher<TypeDescription> type() {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Accelleration.class);
         return is(annotation.getValue(TYPE).resolve(TypeDescription.class));
     }
 
-    public ElementMatcher<MethodDescription> method() {
+    ElementMatcher<MethodDescription> method() {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Accelleration.class);
         return named(annotation.getValue(METHOD).resolve(String.class)).and(takesArguments(annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)));
     }
 
-    public InputStream resourceAsStream(String name) {
-        return classLoader.getResourceAsStream(name);
+    List<DynamicType.Unloaded<?>> binaries(ByteBuddy byteBuddy, String extension) {
+        List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
+        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Accelleration.class);
+        for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
+            String resource = library.getValue(BINARY).resolve(String.class);
+            InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
+            File file;
+            try {
+                file = File.createTempFile(resource, "." + extension);
+                OutputStream out = new FileOutputStream(file);
+                try {
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, length);
+                    }
+                } finally {
+                    out.close();
+                }
+                in.close();
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+            types.add(byteBuddy.redefine(library.getValue(DISPATCHER).resolve(TypeDescription.class), classFileLocator)
+                    .invokable(isTypeInitializer())
+                    .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()))
+                    .make());
+        }
+        return types;
     }
 }
