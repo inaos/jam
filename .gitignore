@@ -27,3 +27,9 @@ hs_err_pid*
 .idea/
 *.iml
 
+# Maven
+*/target/**
+
+# shared-objects and DLL'
+*.so
+*.dll
