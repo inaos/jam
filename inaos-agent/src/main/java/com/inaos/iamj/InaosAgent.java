@@ -8,13 +8,51 @@ import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.utility.JavaModule;
 
-import java.io.File;
 import java.lang.instrument.Instrumentation;
 import java.net.URL;
 
 public class InaosAgent {
 
     private static final ByteBuddy BYTE_BUDDY = new ByteBuddy();
+    
+    private static final String OS_NAME = getSystemProperty("os.name");
+    private static final String OS_ARCH = getSystemProperty("os.arch");
+    private static final String OS_NAME_WINDOWS_PREFIX = "Windows";
+    private static final boolean IS_OS_LINUX = getOsMatchesName("Linux") || getOsMatchesName("LINUX");
+    private static final boolean IS_OS_WINDOWS = getOsMatchesName(OS_NAME_WINDOWS_PREFIX);
+    private static final boolean IS_OS_ARCH_64 = OS_ARCH.equals("amd64");
+    private static final boolean IS_OS_ARCH_32 = OS_ARCH.equals("x86");
+    
+    private static final String NATIVE_SHARED_OBJ_EXT;
+    private static final String NATIVE_SHARED_OBJ_PREFIX;
+    private static final String NATIVE_SHARED_OBJ_FOLDER;
+    
+    
+    static {
+    	if (IS_OS_LINUX) {
+    		NATIVE_SHARED_OBJ_EXT = "so";
+    		NATIVE_SHARED_OBJ_PREFIX = "lib";
+    		if (IS_OS_ARCH_64) {
+    			NATIVE_SHARED_OBJ_FOLDER = "linux-amd64";
+    		} else if (IS_OS_ARCH_32) {
+    			NATIVE_SHARED_OBJ_FOLDER = "linux-i368";
+    		} else {
+    			throw new InaosAgentException("Operating System Architecture not supported: " + OS_ARCH);
+    		}
+    	} else if (IS_OS_WINDOWS) {
+    		NATIVE_SHARED_OBJ_EXT = "dll";
+    		NATIVE_SHARED_OBJ_PREFIX = "";
+    		if (IS_OS_ARCH_64) {
+    			NATIVE_SHARED_OBJ_FOLDER = "win32-amd64";
+    		} else if (IS_OS_ARCH_32) {
+    			NATIVE_SHARED_OBJ_FOLDER = "win32-x86";
+    		} else {
+    			throw new InaosAgentException("Operating System Architecture not supported: " + OS_ARCH);
+    		}
+    	} else {
+    		throw new InaosAgentException("Operating System not supported: " + OS_NAME);
+    	}
+    }
 
     public static void premain(String argument, Instrumentation instrumentation) {
         install(argument, instrumentation, AgentBuilder.RedefinitionStrategy.DISABLED);
@@ -38,7 +76,7 @@ public class InaosAgent {
                 } else if (pair[0].equals("library")) {
                     url = new URL(pair[1]);
                 } else {
-                    throw new IllegalArgumentException("Unknown configuratin: " + pair[0]);
+                    throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
                 }
             }
 
@@ -55,8 +93,6 @@ public class InaosAgent {
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
 
-            final String extension = File.pathSeparator.equals("\\") ? "dll" : "so";
-
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
                 agentBuilder = agentBuilder.type(accelleration.type()).transform(new AgentBuilder.Transformer() {
                     @Override
@@ -64,7 +100,7 @@ public class InaosAgent {
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
-                        for (DynamicType.Unloaded<?> type : accelleration.binaries(BYTE_BUDDY, extension)) {
+                        for (DynamicType.Unloaded<?> type : accelleration.binaries(BYTE_BUDDY, NATIVE_SHARED_OBJ_FOLDER, NATIVE_SHARED_OBJ_PREFIX, NATIVE_SHARED_OBJ_EXT)) {
                             type.load(classLoader, ClassLoadingStrategy.Default.INJECTION);
                         }
                         return builder.visit(accelleration.advice(isDevMode).on(accelleration.method()));
@@ -77,5 +113,27 @@ public class InaosAgent {
             e.printStackTrace();
         }
         return null;
+    }
+    
+    private static boolean getOsMatchesName(final String osNamePrefix) {
+        return isOSNameMatch(OS_NAME, osNamePrefix);
+    }
+    
+    private static boolean isOSNameMatch(final String osName, final String osNamePrefix) {
+        if (osName == null) {
+            return false;
+        }
+        return osName.startsWith(osNamePrefix);
+    }
+    
+    private static String getSystemProperty(final String property) {
+        try {
+            return System.getProperty(property);
+        } catch (final SecurityException ex) {
+            // we are not allowed to look at this property
+            System.err.println("Caught a SecurityException reading the system property '" + property
+                    + "'; the SystemUtils property value will default to null.");
+            return null;
+        }
     }
 }

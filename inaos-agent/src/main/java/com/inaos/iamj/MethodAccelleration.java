@@ -100,11 +100,11 @@ class MethodAccelleration {
         return named(annotation.getValue(METHOD).resolve(String.class)).and(takesArguments(annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)));
     }
 
-    List<DynamicType.Unloaded<?>> binaries(ByteBuddy byteBuddy, String extension) {
+    List<DynamicType.Unloaded<?>> binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Accelleration.class);
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = library.getValue(BINARY).resolve(String.class);
+            String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
             InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
             File file;
             try {
