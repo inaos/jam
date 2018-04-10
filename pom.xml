@@ -13,6 +13,7 @@
         <module>inaos-converter</module>
         <module>inaos-example-app</module>
         <module>inaos-example-lib</module>
+        <module>inaos-observation</module>
     </modules>
     <packaging>pom</packaging>
 

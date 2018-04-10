@@ -1,5 +1,6 @@
 package com.inaos.iamj;
 
+import com.inaos.iamj.boot.InaosAgentDispatcher;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
@@ -8,13 +9,14 @@ import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.utility.JavaModule;
 
+import java.io.File;
 import java.lang.instrument.Instrumentation;
 import java.net.URL;
 
 public class InaosAgent {
 
     private static final ByteBuddy BYTE_BUDDY = new ByteBuddy();
-    
+
     private static final String OS_NAME = getSystemProperty("os.name");
     private static final String OS_ARCH = getSystemProperty("os.arch");
     private static final String OS_NAME_WINDOWS_PREFIX = "Windows";
@@ -22,12 +24,11 @@ public class InaosAgent {
     private static final boolean IS_OS_WINDOWS = getOsMatchesName(OS_NAME_WINDOWS_PREFIX);
     private static final boolean IS_OS_ARCH_64 = OS_ARCH.equals("amd64");
     private static final boolean IS_OS_ARCH_32 = OS_ARCH.equals("x86");
-    
+
     private static final String NATIVE_SHARED_OBJ_EXT;
     private static final String NATIVE_SHARED_OBJ_PREFIX;
     private static final String NATIVE_SHARED_OBJ_FOLDER;
-    
-    
+
     static {
     	if (IS_OS_LINUX) {
     		NATIVE_SHARED_OBJ_EXT = "so";
@@ -62,10 +63,11 @@ public class InaosAgent {
         install(argument, instrumentation, AgentBuilder.RedefinitionStrategy.RETRANSFORMATION);
     }
 
-    public static ResettableClassFileTransformer install(String argument, final Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
+    public static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
         try {
             Boolean devMode = null;
             URL url = null;
+            File sample = null;
 
             for (String config : argument.split(",")) {
                 String[] pair = config.split("=");
@@ -75,6 +77,8 @@ public class InaosAgent {
                     devMode = Boolean.parseBoolean(pair[1]);
                 } else if (pair[0].equals("library")) {
                     url = new URL(pair[1]);
+                } else if (pair[0].equals("sample")) {
+                    sample = new File(pair[1]);
                 } else {
                     throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
                 }
@@ -85,6 +89,9 @@ public class InaosAgent {
             }
 
             final boolean isDevMode = devMode == null ? false : devMode;
+            if (isDevMode) {
+                InaosAgentDispatcher.dispatcher = sample == null ? new ConsoleDispatcher() : new FileWritingDispatcher(sample);
+            }
 
 //        instrumentation.appendToBootstrapClassLoaderSearch(new JarFile()); // TODO: Boot file injection
 
@@ -114,25 +121,24 @@ public class InaosAgent {
         }
         return null;
     }
-    
-    private static boolean getOsMatchesName(final String osNamePrefix) {
+
+    private static boolean getOsMatchesName(String osNamePrefix) {
         return isOSNameMatch(OS_NAME, osNamePrefix);
     }
-    
-    private static boolean isOSNameMatch(final String osName, final String osNamePrefix) {
+
+    private static boolean isOSNameMatch(String osName, String osNamePrefix) {
         if (osName == null) {
             return false;
         }
         return osName.startsWith(osNamePrefix);
     }
-    
-    private static String getSystemProperty(final String property) {
+
+    private static String getSystemProperty(String property) {
         try {
             return System.getProperty(property);
-        } catch (final SecurityException ex) {
+        } catch (SecurityException ex) {
             // we are not allowed to look at this property
-            System.err.println("Caught a SecurityException reading the system property '" + property
-                    + "'; the SystemUtils property value will default to null.");
+            System.err.println("Caught a SecurityException reading the system property '" + property + "'; the SystemUtils property value will default to null.");
             return null;
         }
     }
