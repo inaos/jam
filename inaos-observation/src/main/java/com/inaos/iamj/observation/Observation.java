@@ -12,7 +12,7 @@ public class Observation implements Serializable {
 
     private final Serializable[] arguments;
 
-    public Observation(String name, Serializable returned, Serializable[] arguments) {
+    public Observation(String name, Serializable returned, Serializable... arguments) {
         this.name = name;
         this.returned = returned;
         this.arguments = arguments;

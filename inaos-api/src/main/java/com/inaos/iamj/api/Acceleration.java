@@ -1,4 +1,4 @@
-package com.inaos.iamj;
+package com.inaos.iamj.api;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

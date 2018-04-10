@@ -9,7 +9,19 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>inaos-converter</artifactId>
+    <artifactId>inaos-sample-utility</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>inaos</groupId>
+            <artifactId>inaos-observation</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+        </dependency>
+    </dependencies>
 
 </project>

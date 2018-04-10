@@ -8,21 +8,21 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <modules>
-        <module>inaos-agent</module>
         <module>inaos-api</module>
         <module>inaos-boot</module>
-        <module>inaos-converter</module>
+        <module>inaos-observation</module>
+        <module>inaos-agent</module>
+        <module>inaos-sample-utility</module>
         <module>inaos-example-app</module>
         <module>inaos-example-lib</module>
-        <module>inaos-observation</module>
     </modules>
 
     <packaging>pom</packaging>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.target>1.6</maven.compiler.target>
         <maven.compiler.source>1.6</maven.compiler.source>
         <bytebuddy.version>1.8.3</bytebuddy.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 </project>

@@ -1,4 +1,4 @@
-package com.inaos.iamj;
+package com.inaos.iamj.agent;
 
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -159,8 +159,8 @@ public class InaosAgent {
         Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
         Field instance = dispatcher.getField("dispatcher");
         instance.set(null, sample == null
-                ? Class.forName("com.inaos.iamj.ConsoleDispatcher").getConstructor().newInstance()
-                : Class.forName("com.inaos.iamj.FileWritingDispatcher").getConstructor(File.class).newInstance(sample));
+                ? Class.forName("com.inaos.iamj.agent.ConsoleDispatcher").getConstructor().newInstance()
+                : Class.forName("com.inaos.iamj.agent.FileWritingDispatcher").getConstructor(File.class).newInstance(sample));
     }
 
     private static boolean isOsMatchesName(String osNamePrefix) {

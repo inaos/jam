@@ -1,5 +1,6 @@
-package com.inaos.iamj;
+package com.inaos.iamj.agent;
 
+import com.inaos.iamj.api.Acceleration;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.annotation.AnnotationDescription;
