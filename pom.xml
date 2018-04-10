@@ -12,6 +12,7 @@
         <module>inaos-boot</module>
         <module>inaos-observation</module>
         <module>inaos-agent</module>
+        <module>inaos-attach</module>
         <module>inaos-sample-utility</module>
         <module>inaos-example-app</module>
         <module>inaos-example-lib</module>
