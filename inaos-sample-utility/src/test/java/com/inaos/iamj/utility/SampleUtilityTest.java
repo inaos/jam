@@ -25,7 +25,6 @@ public class SampleUtilityTest {
         SampleUtility.main(new PrintStream(result), sample);
 
         String printed = new String(result.toByteArray(), "utf-8");
-
         assertThat(printed, is("Extracting all observations from " + sample.getAbsolutePath() + "\nCaptured call of met returned ret using [arg1, arg2]\n"));
     }
 }
