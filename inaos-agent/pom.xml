@@ -50,48 +50,47 @@
                         <configuration>
                             <target name="Copying boot jar file">
                                 <copy file="${project.basedir}/../inaos-boot/target/inaos-boot-${project.version}.jar"
-                                      tofile="${project.basedir}/src/main/resources/inaos-boot.jar" />
+                                      tofile="${project.basedir}/src/main/resources/inaos-boot.jar"/>
                             </target>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
             <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-shade-plugin</artifactId>
-            <version>3.1.0</version>
-            <executions>
-                <execution>
-                    <phase>package</phase>
-                    <goals>
-                        <goal>shade</goal>
-                    </goals>
-                    <configuration>
-                        <shadedArtifactAttached>true</shadedArtifactAttached>
-                        <relocations>
-                            <relocation>
-                                <pattern>net.bytebuddy</pattern>
-                                <shadedPattern>com.inaos.iamj.bytebuddy</shadedPattern>
-                            </relocation>
-                            <relocation>
-                                <pattern>com.inaos.iamj.observation</pattern>
-                                <shadedPattern>com.inaos.iamj.observation</shadedPattern>
-                            </relocation>
-                        </relocations>
-                        <transformers>
-                            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                <manifestEntries>
-                                    <Agent-Class>com.inaos.iamj.agent.InaosAgent</Agent-Class>
-                                    <Premain-Class>com.inaos.iamj.agent.InaosAgent</Premain-Class>
-                                    <Can-Retransform-Classes>true</Can-Retransform-Classes>
-                                    <Build-Number>123</Build-Number>
-                                </manifestEntries>
-                            </transformer>
-                        </transformers>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <relocations>
+                                <relocation>
+                                    <pattern>net.bytebuddy</pattern>
+                                    <shadedPattern>com.inaos.iamj.bytebuddy</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.inaos.iamj.observation</pattern>
+                                    <shadedPattern>com.inaos.iamj.observation</shadedPattern>
+                                </relocation>
+                            </relocations>
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Agent-Class>com.inaos.iamj.agent.InaosAgent</Agent-Class>
+                                        <Premain-Class>com.inaos.iamj.agent.InaosAgent</Premain-Class>
+                                        <Can-Retransform-Classes>true</Can-Retransform-Classes>
+                                    </manifestEntries>
+                                </transformer>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
