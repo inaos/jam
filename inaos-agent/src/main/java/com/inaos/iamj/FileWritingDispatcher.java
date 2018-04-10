@@ -5,20 +5,20 @@ import com.inaos.iamj.observation.Observation;
 
 import java.io.*;
 
-class FileWritingDispatcher extends InaosAgentDispatcher {
+public class FileWritingDispatcher extends InaosAgentDispatcher {
 
     private final File target;
 
-    FileWritingDispatcher(File target) {
+    public FileWritingDispatcher(File target) {
         this.target = target;
     }
 
     @Override
-    protected synchronized void accept(String name, Serializable[] args) {
+    protected synchronized void accept(String name, Serializable returned, Serializable[] args) {
         try {
-            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(target));
+            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(target, true));
             try {
-                out.writeObject(new Observation(name, args));
+                out.writeObject(new Observation(name, returned, args));
             } finally {
                 out.close();
             }

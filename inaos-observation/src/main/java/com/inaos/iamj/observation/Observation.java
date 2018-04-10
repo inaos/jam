@@ -8,15 +8,22 @@ public class Observation implements Serializable {
 
     private final String name;
 
+    private final Serializable returned;
+
     private final Serializable[] arguments;
 
-    public Observation(String name, Serializable[] arguments) {
+    public Observation(String name, Serializable returned, Serializable[] arguments) {
         this.name = name;
+        this.returned = returned;
         this.arguments = arguments;
     }
 
     public String getName() {
         return name;
+    }
+
+    public Serializable getReturned() {
+        return returned;
     }
 
     public List<Serializable> getArguments() {
@@ -25,6 +32,6 @@ public class Observation implements Serializable {
 
     @Override
     public String toString() {
-        return "Captured call of " + name + " using " + Arrays.deepToString(arguments);
+        return "Captured call of " + name + " returned " + returned + " using " + Arrays.deepToString(arguments);
     }
 }

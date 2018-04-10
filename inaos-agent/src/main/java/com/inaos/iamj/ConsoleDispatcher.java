@@ -5,10 +5,10 @@ import com.inaos.iamj.observation.Observation;
 
 import java.io.Serializable;
 
-class ConsoleDispatcher extends InaosAgentDispatcher {
+public class ConsoleDispatcher extends InaosAgentDispatcher {
 
     @Override
-    protected void accept(String name, Serializable[] args) {
-        System.out.println(new Observation(name, args));
+    protected void accept(String name, Serializable returned, Serializable[] args) {
+        System.out.println(new Observation(name, returned, args));
     }
 }
