@@ -16,6 +16,7 @@
         <module>inaos-sample-utility</module>
         <module>inaos-example-app</module>
         <module>inaos-example-lib</module>
+		<module>inaos-example-bench</module>
     </modules>
 
     <packaging>pom</packaging>
@@ -25,5 +26,6 @@
         <maven.compiler.target>1.6</maven.compiler.target>
         <maven.compiler.source>1.6</maven.compiler.source>
         <bytebuddy.version>1.8.3</bytebuddy.version>
+		<jmh.version>1.20</jmh.version>
     </properties>
 </project>
