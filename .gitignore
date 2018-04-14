@@ -38,3 +38,6 @@ hs_err_pid*
 # shared-objects and DLL'
 *.so
 *.dll
+
+# Allow test data for examples
+!inaos-example-app/src/main/resources/example3.zip
