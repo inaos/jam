@@ -40,6 +40,10 @@ public class InaosAgent {
     private static final String NATIVE_SHARED_OBJ_PREFIX;
 
     private static final String NATIVE_SHARED_OBJ_FOLDER;
+    
+    private static final int MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
+    
+    private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024*1024; // 1 MB
 
     static {
         if (IS_OS_LINUX) {
@@ -156,11 +160,16 @@ public class InaosAgent {
     }
 
     private static void registerDispatcher(File sample) throws Exception { // Use reflection for delayed class resolution after appending to boot loader.
-        Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
+        Object which;
+        if (sample == null) {
+        	which = Class.forName("com.inaos.iamj.agent.ConsoleDispatcher").getConstructor().newInstance();
+        } else {
+        	which = Class.forName("com.inaos.iamj.agent.FileWritingDispatcher").getConstructor(File.class)
+        			.newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
+        }
+    	Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
         Field instance = dispatcher.getField("dispatcher");
-        instance.set(null, sample == null
-                ? Class.forName("com.inaos.iamj.agent.ConsoleDispatcher").getConstructor().newInstance()
-                : Class.forName("com.inaos.iamj.agent.FileWritingDispatcher").getConstructor(File.class).newInstance(sample));
+        instance.set(null, which);
     }
 
     private static boolean isOsMatchesName(String osNamePrefix) {
