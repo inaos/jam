@@ -28,6 +28,10 @@ public class SampleUtility {
                 out.println(observation);
             } catch (EOFException ignored) {
                 return;
+            } finally {
+            	if (in != null) {
+            		in.close();
+            	}
             }
         }
     }

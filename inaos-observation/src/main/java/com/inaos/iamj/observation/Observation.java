@@ -32,6 +32,10 @@ public class Observation implements Serializable {
 
     @Override
     public String toString() {
-        return "Captured call of " + name + " returned " + returned + " using " + Arrays.deepToString(arguments);
+    	if (returned == null) {
+    		return "Captured call of " + name + " returned void using " + Arrays.deepToString(arguments);
+    	} else {
+    		return "Captured call of " + name + " returned " + returned + " using " + Arrays.deepToString(arguments);
+    	}
     }
 }
