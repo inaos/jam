@@ -164,7 +164,7 @@ public class InaosAgent {
         if (sample == null) {
         	which = Class.forName("com.inaos.iamj.agent.ConsoleDispatcher").getConstructor().newInstance();
         } else {
-        	which = Class.forName("com.inaos.iamj.agent.FileWritingDispatcher").getConstructor(File.class)
+        	which = Class.forName("com.inaos.iamj.agent.FileWritingDispatcher").getConstructor(File.class, int.class, long.class)
         			.newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
         }
     	Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
