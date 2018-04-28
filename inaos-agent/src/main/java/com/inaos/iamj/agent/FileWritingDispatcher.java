@@ -14,6 +14,7 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
     private final long maxObservationBytes;
     private final Map<String, Integer> observationCount = new HashMap<String, Integer>();
     private final Map<String, Long> observationBytes = new HashMap<String, Long>();
+    private boolean shouldAppendStream = false;
 
     public FileWritingDispatcher(File target, int maxObservationCount, long maxObservationBytes) {
         this.target = target;
@@ -26,7 +27,13 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
         try {
         	Observation o = new Observation(name, returned, args);
         	if (canWriteToFile(name, o)) {
-	            ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(target, true));
+        		ObjectOutputStream out;
+        		if (!shouldAppendStream) {
+        			out = new ObjectOutputStream(new FileOutputStream(target, false));
+        			shouldAppendStream = true;
+        		} else {
+        			out = new AppendingObjectOutputStream(new FileOutputStream(target, true));
+        		}
 	            try {
 	                out.writeObject(o);
 	            } finally {
@@ -55,6 +62,21 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
 			return true;
 		}
 		return false;
+	}
+	
+	private final static class AppendingObjectOutputStream extends ObjectOutputStream {
+		
+		public AppendingObjectOutputStream(OutputStream out) throws IOException {
+			super(out);
+		}
+		
+		@Override
+		protected void writeStreamHeader() throws IOException {
+			// do not write a header, but reset:
+			// this line added after another question
+			// showed a problem with the original
+			reset();
+		}
 	}
 	
 	private final static class CheckSerializedSize extends OutputStream {
