@@ -13,9 +13,9 @@
         <module>inaos-observation</module>
         <module>inaos-agent</module>
         <module>inaos-attach</module>
-        <module>inaos-sample-utility</module>
         <module>inaos-example-app</module>
         <module>inaos-example-lib</module>
+		<module>inaos-example-utility</module>
 		<module>inaos-example-bench</module>
     </modules>
 
