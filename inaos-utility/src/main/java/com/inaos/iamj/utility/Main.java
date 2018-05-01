@@ -38,7 +38,7 @@ public class Main {
 
         Input in = new Input(new FileInputStream(command.source));
         try {
-            while (!Thread.interrupted()) {
+            while (!Thread.interrupted() && !in.eof()) {
                 Observation observation = (Observation) kryo.readClassAndObject(in);
                 if (command.dispatcher) {
                     dispatcherGenerator.generateDispatcher(observation, command.target);
