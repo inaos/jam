@@ -3,12 +3,10 @@ package com.inaos.iamj.agent;
 import com.inaos.iamj.boot.InaosAgentDispatcher;
 import com.inaos.iamj.observation.Observation;
 
-import java.io.Serializable;
-
 public class ConsoleDispatcher extends InaosAgentDispatcher {
 
     @Override
-    protected void accept(String name, Serializable returned, Serializable[] args) {
+    protected void accept(String name, Object returned, Object[] args) {
         System.out.println(new Observation(name, returned, args));
     }
 }

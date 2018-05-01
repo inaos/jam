@@ -22,27 +22,20 @@ public class InaosAgent {
     private static final ByteBuddy BYTE_BUDDY = new ByteBuddy();
 
     private static final String OS_NAME = getSystemProperty("os.name");
-
     private static final String OS_ARCH = getSystemProperty("os.arch");
 
     private static final String OS_NAME_WINDOWS_PREFIX = "Windows";
 
     private static final boolean IS_OS_LINUX = isOsMatchesName("Linux") || isOsMatchesName("LINUX");
-
     private static final boolean IS_OS_WINDOWS = isOsMatchesName(OS_NAME_WINDOWS_PREFIX);
-
     private static final boolean IS_OS_ARCH_64 = OS_ARCH.equals("amd64");
-
     private static final boolean IS_OS_ARCH_32 = OS_ARCH.equals("x86");
 
     private static final String NATIVE_SHARED_OBJ_EXT;
-
     private static final String NATIVE_SHARED_OBJ_PREFIX;
-
     private static final String NATIVE_SHARED_OBJ_FOLDER;
-    
-    private static final int MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
-    
+
+    private static final long MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
     private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024*1024; // 1 MB
 
     static {
@@ -164,7 +157,8 @@ public class InaosAgent {
         if (sample == null) {
         	which = Class.forName("com.inaos.iamj.agent.ConsoleDispatcher").getConstructor().newInstance();
         } else {
-        	which = Class.forName("com.inaos.iamj.agent.FileWritingDispatcher").getConstructor(File.class, int.class, long.class)
+        	which = Class.forName("com.inaos.iamj.agent.FileWritingDispatcher")
+                    .getConstructor(File.class, long.class, long.class)
         			.newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
         }
     	Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");

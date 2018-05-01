@@ -8,11 +8,11 @@ public class Observation implements Serializable {
 
     private final String name;
 
-    private final Serializable returned;
+    private final Object returned;
 
-    private final Serializable[] arguments;
+    private final Object[] arguments;
 
-    public Observation(String name, Serializable returned, Serializable... arguments) {
+    public Observation(String name, Object returned, Object... arguments) {
         this.name = name;
         this.returned = returned;
         this.arguments = arguments;
@@ -22,11 +22,11 @@ public class Observation implements Serializable {
         return name;
     }
 
-    public Serializable getReturned() {
+    public Object getReturned() {
         return returned;
     }
 
-    public List<Serializable> getArguments() {
+    public List<Object> getArguments() {
         return Arrays.asList(arguments);
     }
 

@@ -1,110 +1,95 @@
 package com.inaos.iamj.agent;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
 import com.inaos.iamj.boot.InaosAgentDispatcher;
 import com.inaos.iamj.observation.Observation;
 
-import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class FileWritingDispatcher extends InaosAgentDispatcher {
 
+    private final Kryo kryo = new Kryo();
     private final File target;
-    private final int maxObservationCount;
-    private final long maxObservationBytes;
-    private final Map<String, Integer> observationCount = new HashMap<String, Integer>();
-    private final Map<String, Long> observationBytes = new HashMap<String, Long>();
-    private boolean shouldAppendStream = false;
 
-    public FileWritingDispatcher(File target, int maxObservationCount, long maxObservationBytes) {
+    private final long maxObservationCount, maxObservationBytes;
+    private final ConcurrentMap<String, AtomicLong> observationCount = new ConcurrentHashMap<String, AtomicLong>(), observationBytes = new ConcurrentHashMap<String, AtomicLong>();
+
+    public FileWritingDispatcher(File target, long maxObservationCount, long maxObservationBytes) {
         this.target = target;
         this.maxObservationCount = maxObservationCount;
         this.maxObservationBytes = maxObservationBytes;
     }
 
     @Override
-    protected synchronized void accept(String name, Serializable returned, Serializable[] args) {
+    protected synchronized void accept(String name, Object returned, Object[] args) {
+        observationCount.putIfAbsent(name, new AtomicLong());
+        if (observationCount.get(name).incrementAndGet() > maxObservationCount) {
+            return;
+        }
+        observationBytes.putIfAbsent(name, new AtomicLong());
+        AtomicLong sum = observationBytes.get(name);
+        if (sum.get() > maxObservationBytes) {
+            return;
+        }
         try {
-        	Observation o = new Observation(name, returned, args);
-        	if (canWriteToFile(name, o)) {
-        		ObjectOutputStream out;
-        		if (!shouldAppendStream) {
-        			out = new ObjectOutputStream(new FileOutputStream(target, false));
-        			shouldAppendStream = true;
-        		} else {
-        			out = new AppendingObjectOutputStream(new FileOutputStream(target, true));
-        		}
-	            try {
-	                out.writeObject(o);
-	            } finally {
-	                out.close();
-	            }
-        	}
+            Observation o = new Observation(name, returned, args);
+            Output out = new Output(new ByteCountingStream(new FileOutputStream(target, true), sum));
+            try {
+                kryo.writeClassAndObject(out, o);
+            } finally {
+                out.close();
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
-	
-	private boolean canWriteToFile(String name, Observation observation) throws IOException {
-		Integer count = observationCount.get(name);
-        if (count == null) {
-        	count = new Integer(0);
-        	observationCount.put(name, count);
+
+    private static class ByteCountingStream extends OutputStream {
+
+        private final OutputStream out;
+        private final AtomicLong sum;
+
+        private long count;
+
+        ByteCountingStream(OutputStream out, AtomicLong sum) {
+            this.out = out;
+            this.sum = sum;
         }
-        count++;
-        Long bytes = observationBytes.get(name);
-		if (bytes == null) {
-			bytes = new Long(0);
-		}
-		long bytesToWrite = CheckSerializedSize.getSerializedSize(observation);
-		bytes += bytesToWrite;
-		if (count < this.maxObservationCount && bytes < this.maxObservationBytes) {
-			return true;
-		}
-		return false;
-	}
-	
-	private final static class AppendingObjectOutputStream extends ObjectOutputStream {
-		
-		public AppendingObjectOutputStream(OutputStream out) throws IOException {
-			super(out);
-		}
-		
-		@Override
-		protected void writeStreamHeader() throws IOException {
-			// do not write a header, but reset:
-			// this line added after another question
-			// showed a problem with the original
-			reset();
-		}
-	}
-	
-	private final static class CheckSerializedSize extends OutputStream {
-		
-		private long nBytes = 0;
-		
-	    public static long getSerializedSize(Serializable obj) throws IOException {
-	        CheckSerializedSize counter = new CheckSerializedSize();
-	        ObjectOutputStream objectOutputStream = new ObjectOutputStream(counter);
-	        objectOutputStream.writeObject(obj);
-	        objectOutputStream.close();
-	        return counter.getNBytes();
-	    }
 
-	    private CheckSerializedSize() {}
+        @Override
+        public void write(int b) throws IOException {
+            count++;
+            out.write(b);
+        }
 
-	    @Override
-	    public void write(int b) throws IOException {
-	        ++nBytes;
-	    }
+        @Override
+        public void write(byte[] b) throws IOException {
+            count += b.length;
+            out.write(b);
+        }
 
-	    @Override
-	    public void write(byte[] b, int off, int len) throws IOException {
-	        nBytes += len;
-	    }
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            count += len;
+            out.write(b, off, len);
+        }
 
-	    public long getNBytes() {
-	        return nBytes;
-	    }
-	}
+        @Override
+        public void flush() throws IOException {
+            out.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            sum.addAndGet(count);
+            out.close();
+        }
+    }
 }
