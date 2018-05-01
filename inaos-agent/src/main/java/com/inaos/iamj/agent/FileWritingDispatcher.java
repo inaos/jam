@@ -28,7 +28,10 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
     }
 
     @Override
-    protected void accept(String name, Class<?> returnType, Class<?>[] argumentTypes, Object returnValue, Object[] argumentValues) {
+    protected void accept(String name,
+                          String dispatcherName, String methodName,
+                          Class<?> returnType, Class<?>[] argumentTypes,
+                          Object returnValue, Object[] argumentValues) {
         observationCount.putIfAbsent(name, new AtomicLong());
         if (observationCount.get(name).incrementAndGet() > maxObservationCount) {
             return;
@@ -39,7 +42,7 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
             return;
         }
         try {
-            Observation o = new Observation(name, returnType, argumentTypes, returnValue, argumentValues);
+            Observation o = new Observation(name, dispatcherName, methodName, returnType, argumentTypes, returnValue, argumentValues);
             Output out = new Output(new ByteCountingStream(new FileOutputStream(target, true), sum));
             try {
                 kryo.writeClassAndObject(out, o);

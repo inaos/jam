@@ -2,20 +2,30 @@ package com.inaos.iamj.observation;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.List;
 
 public class Observation implements Serializable {
 
     private final String name;
 
+    private final String dispatcherName;
+
+    private final String methodName;
+
     private final Class<?> returnType;
+
     private final Class<?>[] argumentTypes;
 
     private final Object returnValue;
+
     private final Object[] argumentValues;
 
-    public Observation(String name, Class<?> returnType, Class<?>[] argumentTypes, Object returnValue, Object[] argumentValues) {
+    public Observation(String name,
+                       String dispatcherName, String methodName,
+                       Class<?> returnType, Class<?>[] argumentTypes,
+                       Object returnValue, Object[] argumentValues) {
         this.name = name;
+        this.dispatcherName = dispatcherName;
+        this.methodName = methodName;
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
         this.returnValue = returnValue;
@@ -24,6 +34,14 @@ public class Observation implements Serializable {
 
     public String getName() {
         return name;
+    }
+
+    public String getDispatcherName() {
+        return dispatcherName;
+    }
+
+    public String getMethodName() {
+        return methodName;
     }
 
     public Class<?> getReturnType() {
@@ -44,11 +62,9 @@ public class Observation implements Serializable {
 
     @Override
     public String toString() {
-        return new StringBuilder()
-                .append("Observation for ").append(name)
-                .append(" with native dispatch")
-                .append(" returning ").append(returnType).append(" with value ").append(returnValue)
-                .append(" for arguments ").append(Arrays.toString(argumentValues)).append(" with values ").append(Arrays.deepToString(argumentValues))
-                .toString();
+        return "Observation for " + name +
+                " with native dispatch to " + dispatcherName + " on " + methodName +
+                " returning " + returnType + " with value " + returnValue +
+                " using arguments " + Arrays.toString(argumentValues) + " with values " + Arrays.deepToString(argumentValues);
     }
 }
