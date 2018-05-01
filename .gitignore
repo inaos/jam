@@ -41,3 +41,7 @@ hs_err_pid*
 
 # Allow test data for examples
 !inaos-example-app/src/main/resources/example3.zip
+
+# Allow flatbuffers jar file
+!inaos-example-utility/tool/flatbuffers-java-1.9.0.jar
+
