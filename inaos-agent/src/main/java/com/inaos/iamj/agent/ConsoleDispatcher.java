@@ -6,7 +6,7 @@ import com.inaos.iamj.observation.Observation;
 public class ConsoleDispatcher extends InaosAgentDispatcher {
 
     @Override
-    protected void accept(String name, Object returned, Object[] args) {
-        System.out.println(new Observation(name, returned, args));
+    protected void accept(String name, Class<?> returnType, Class<?>[] argumentTypes, Object returnValue, Object[] argumentValues) {
+        System.out.println(new Observation(name, returnType, argumentTypes, returnValue, argumentValues));
     }
 }
