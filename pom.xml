@@ -17,6 +17,7 @@
         <module>inaos-example-lib</module>
 		<module>inaos-example-utility</module>
 		<module>inaos-example-bench</module>
+        <module>inaos-utility</module>
     </modules>
 
     <packaging>pom</packaging>
@@ -28,5 +29,6 @@
         <bytebuddy.version>1.8.10</bytebuddy.version>
         <kryo.version>4.0.2</kryo.version>
 		<jmh.version>1.20</jmh.version>
+        <junit.version>4.12</junit.version>
     </properties>
 </project>
