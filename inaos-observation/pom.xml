@@ -11,5 +11,13 @@
 
     <artifactId>inaos-observation</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>com.esotericsoftware</groupId>
+            <artifactId>kryo</artifactId>
+            <version>${kryo.version}</version>
+        </dependency>
+    </dependencies>
+
 
 </project>

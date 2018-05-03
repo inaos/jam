@@ -24,7 +24,7 @@ import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
 
-    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, DISPATCHER, BINARY, SYSTEM_LOAD;
+    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, RETAIN_ARGUMENTS, DISPATCHER, BINARY, SYSTEM_LOAD;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -32,6 +32,7 @@ class MethodAccelleration {
         METHOD = accelleration.getDeclaredMethods().filter(named("method")).getOnly();
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
+        RETAIN_ARGUMENTS = accelleration.getDeclaredMethods().filter(named("retainArguments")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
@@ -79,16 +80,18 @@ class MethodAccelleration {
 
     private final ClassLoader classLoader;
 
-    private MethodAccelleration(TypeDescription typeDescription, ClassFileLocator classFileLocator, ClassLoader classLoader) throws IOException {
+    private MethodAccelleration(TypeDescription typeDescription, ClassFileLocator classFileLocator, ClassLoader classLoader) {
         this.typeDescription = typeDescription;
         this.classFileLocator = classFileLocator;
         this.classLoader = classLoader;
     }
 
     Advice advice(boolean devMode) {
+        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
+        Class<?> enterAdvice = annotation.getValue(RETAIN_ARGUMENTS).resolve(Boolean.class) ? AdviceThatRetainsArguments.class : AdviceThatIsTrivial.class;
         return Advice.withCustomMapping()
                 .bind(DevMode.class, devMode)
-                .to(new TypeDescription.ForLoadedType(EnterAdvice.class), typeDescription, classFileLocator);
+                .to(new TypeDescription.ForLoadedType(enterAdvice), typeDescription, classFileLocator);
     }
 
     ElementMatcher<TypeDescription> type() {

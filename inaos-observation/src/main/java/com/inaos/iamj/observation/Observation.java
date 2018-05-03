@@ -1,35 +1,21 @@
 package com.inaos.iamj.observation;
 
 import java.io.Serializable;
-import java.util.Arrays;
 
 public class Observation implements Serializable {
 
-    private final String name;
+    private final String name, dispatcherName, methodName;
 
-    private final String dispatcherName;
+    private final SerializedValue serializedArguments, serializedArgumentsOnEntry, serializedReturn;
 
-    private final String methodName;
-
-    private final Class<?> returnType;
-
-    private final Class<?>[] argumentTypes;
-
-    private final Object returnValue;
-
-    private final Object[] argumentValues;
-
-    public Observation(String name,
-                       String dispatcherName, String methodName,
-                       Class<?> returnType, Class<?>[] argumentTypes,
-                       Object returnValue, Object[] argumentValues) {
+    public Observation(String name, String dispatcherName, String methodName,
+                       SerializedValue serializedArguments, SerializedValue serializedArgumentsOnEntry, SerializedValue serializedReturn) {
         this.name = name;
         this.dispatcherName = dispatcherName;
         this.methodName = methodName;
-        this.returnType = returnType;
-        this.argumentTypes = argumentTypes;
-        this.returnValue = returnValue;
-        this.argumentValues = argumentValues;
+        this.serializedArguments = serializedArguments;
+        this.serializedArgumentsOnEntry = serializedArgumentsOnEntry;
+        this.serializedReturn = serializedReturn;
     }
 
     public String getName() {
@@ -44,27 +30,15 @@ public class Observation implements Serializable {
         return methodName;
     }
 
-    public Class<?> getReturnType() {
-        return returnType;
+    public SerializedValue getSerializedArguments() {
+        return serializedArguments;
     }
 
-    public Class<?>[] getArgumentTypes() {
-        return argumentTypes;
+    public SerializedValue getSerializedArgumentsOnEntry() {
+        return serializedArgumentsOnEntry;
     }
 
-    public Object getReturnValue() {
-        return returnValue;
-    }
-
-    public Object[] getArgumentValues() {
-        return argumentValues;
-    }
-
-    @Override
-    public String toString() {
-        return "Observation for " + name +
-                " with native dispatch to " + dispatcherName + " on " + methodName +
-                " returning " + returnType + " with value " + returnValue +
-                " using arguments " + Arrays.toString(argumentValues) + " with values " + Arrays.deepToString(argumentValues);
+    public SerializedValue getSerializedReturn() {
+        return serializedReturn;
     }
 }

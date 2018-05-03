@@ -1,5 +1,6 @@
 package com.inaos.iamj.agent;
 
+import com.esotericsoftware.kryo.Kryo;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
@@ -152,12 +153,15 @@ public class InaosAgent {
         return null;
     }
 
-    private static void registerDispatcher(File sample) throws Exception { // Use reflection for delayed class resolution after appending to boot loader.
+    // Use reflection for delayed class resolution after appending to boot loader.
+    private static void registerDispatcher(File sample) throws Exception {
         Object which;
         if (sample == null) {
-        	which = Class.forName("com.inaos.iamj.agent.ConsoleDispatcher").getConstructor().newInstance();
+        	which = Class.forName("com.inaos.iamj.agent.DispatcherToConsole")
+                    .getConstructor()
+                    .newInstance();
         } else {
-        	which = Class.forName("com.inaos.iamj.agent.FileWritingDispatcher")
+        	which = Class.forName("com.inaos.iamj.agent.DispatcherToFile")
                     .getConstructor(File.class, long.class, long.class)
         			.newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
         }

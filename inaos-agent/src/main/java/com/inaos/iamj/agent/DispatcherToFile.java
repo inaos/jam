@@ -4,6 +4,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
 import com.inaos.iamj.boot.InaosAgentDispatcher;
 import com.inaos.iamj.observation.Observation;
+import com.inaos.iamj.observation.SerializedValue;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -13,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class FileWritingDispatcher extends InaosAgentDispatcher {
+public class DispatcherToFile extends InaosAgentDispatcher {
 
     private final Kryo kryo = new Kryo();
     private final File target;
@@ -21,17 +22,26 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
     private final long maxObservationCount, maxObservationBytes;
     private final ConcurrentMap<String, AtomicLong> observationCount = new ConcurrentHashMap<String, AtomicLong>(), observationBytes = new ConcurrentHashMap<String, AtomicLong>();
 
-    public FileWritingDispatcher(File target, long maxObservationCount, long maxObservationBytes) {
+    public DispatcherToFile(File target, long maxObservationCount, long maxObservationBytes) {
         this.target = target;
         this.maxObservationCount = maxObservationCount;
         this.maxObservationBytes = maxObservationBytes;
     }
 
     @Override
+    protected Object accept(Class<?>[] types, Object[] arguments) {
+        return SerializedValue.make(kryo, types, arguments);
+    }
+
+    @Override
     protected void accept(String name,
-                          String dispatcherName, String methodName,
-                          Class<?> returnType, Class<?>[] argumentTypes,
-                          Object returnValue, Object[] argumentValues) {
+                          Object entry,
+                          String dispatcherName,
+                          String methodName,
+                          Class<?> returnType,
+                          Class<?>[] argumentTypes,
+                          Object returnValue,
+                          Object[] argumentValues) {
         observationCount.putIfAbsent(name, new AtomicLong());
         if (observationCount.get(name).incrementAndGet() > maxObservationCount) {
             return;
@@ -42,7 +52,8 @@ public class FileWritingDispatcher extends InaosAgentDispatcher {
             return;
         }
         try {
-            Observation o = new Observation(name, dispatcherName, methodName, returnType, argumentTypes, returnValue, argumentValues);
+            Observation o = new Observation(name, dispatcherName, methodName,
+                    SerializedValue.make(kryo, argumentTypes, argumentValues), (SerializedValue) entry, SerializedValue.make(kryo, returnType, returnValue));
             Output out = new Output(new ByteCountingStream(new FileOutputStream(target, true), sum));
             try {
                 kryo.writeClassAndObject(out, o);

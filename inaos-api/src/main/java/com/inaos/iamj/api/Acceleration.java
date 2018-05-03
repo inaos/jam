@@ -14,6 +14,8 @@ public @interface Acceleration {
 
     Library[] libraries() default {};
 
+    boolean retainArguments() default false;
+
     @interface Library {
 
         Class<?> dispatcher();

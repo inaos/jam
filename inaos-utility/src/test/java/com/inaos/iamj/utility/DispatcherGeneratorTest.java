@@ -3,6 +3,7 @@ package com.inaos.iamj.utility;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
 import com.inaos.iamj.observation.Observation;
+import com.inaos.iamj.observation.SerializedValue;
 import org.junit.Test;
 
 import javax.tools.JavaCompiler;
@@ -14,14 +15,16 @@ import java.util.Random;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
 
-public class MainTest {
+public class DispatcherGeneratorTest {
 
     @Test
     public void testDispatcherGeneration() throws Exception {
-        Observation observation = new Observation("foo",
-                "qux.Baz", "bar",
-                int.class, new Class<?>[]{String.class, long.class},
-                42, new Object[]{"abc", 123L});
+        Kryo kryo = new Kryo();
+
+        Observation observation = new Observation("foo", "qux.Baz", "bar",
+                SerializedValue.make(kryo, new Class<?>[]{String.class, long.class}, new Object[]{"abc", 123L}),
+                null,
+                SerializedValue.make(kryo, int.class, 42));
 
         File test = File.createTempFile("iamj", ".tmp");
         File folder = new File(test.getParentFile(), "test_target_" + new Random().nextInt());
@@ -29,7 +32,6 @@ public class MainTest {
             throw new AssertionError();
         }
 
-        Kryo kryo = new Kryo();
         Output out = new Output(new FileOutputStream(test));
         try {
             kryo.writeClassAndObject(out, observation);

@@ -1,9 +1,7 @@
 package com.inaos.iamj.utility;
 
 import com.inaos.iamj.observation.Observation;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.MethodSpec;
-import com.squareup.javapoet.TypeSpec;
+import com.squareup.javapoet.*;
 
 import javax.lang.model.element.Modifier;
 import java.io.File;
@@ -23,21 +21,29 @@ class DispatcherGenerator {
         MethodSpec.Builder methodBuilder = MethodSpec
                 .methodBuilder(observation.getMethodName())
                 .addModifiers(Modifier.STATIC, Modifier.NATIVE)
-                .returns(observation.getReturnType());
+                .returns(observation.getSerializedReturn() == null ? TypeName.VOID : of(observation.getSerializedReturn().getTypes()[0]));
 
         int index = 0;
-        for (Class<?> argumentType : observation.getArgumentTypes()) {
-            methodBuilder = methodBuilder.addParameter(argumentType, "arg" + index++);
+        for (String argumentType : observation.getSerializedArguments().getTypes()) {
+            methodBuilder = methodBuilder.addParameter(of(argumentType), "arg" + index++);
         }
 
-        int packageIndex = observation.getDispatcherName().lastIndexOf('.');
-        if (packageIndex == -1) {
-            throw new IllegalArgumentException("No package for: " + observation.getDispatcherName());
-        }
-
-        TypeSpec dispatcher = TypeSpec.classBuilder(observation.getDispatcherName().substring(packageIndex + 1)).addMethod(methodBuilder.build()).build();
-        JavaFile javaFile = JavaFile.builder(observation.getDispatcherName().substring(0, packageIndex), dispatcher).build();
+        ClassName className = ClassName.bestGuess(observation.getDispatcherName());
+        TypeSpec dispatcher = TypeSpec.classBuilder(className).addMethod(methodBuilder.build()).build();
+        JavaFile javaFile = JavaFile.builder(className.packageName(), dispatcher).build();
 
         javaFile.writeTo(folder);
+    }
+
+    private static TypeName of(String name) {
+        if (name.equals(boolean.class.getName())) return TypeName.BOOLEAN;
+        if (name.equals(byte.class.getName())) return TypeName.BYTE;
+        if (name.equals(short.class.getName())) return TypeName.SHORT;
+        if (name.equals(int.class.getName())) return TypeName.INT;
+        if (name.equals(long.class.getName())) return TypeName.LONG;
+        if (name.equals(char.class.getName())) return TypeName.CHAR;
+        if (name.equals(float.class.getName())) return TypeName.FLOAT;
+        if (name.equals(double.class.getName())) return TypeName.DOUBLE;
+        return ClassName.bestGuess(name);
     }
 }
