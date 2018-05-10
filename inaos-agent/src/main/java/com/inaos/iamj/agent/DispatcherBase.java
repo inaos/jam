@@ -22,9 +22,7 @@ abstract class DispatcherBase extends InaosAgentDispatcher {
 
     @Override
     protected void doAttach(Object observation, String name, Class<?> type, Object argument) {
-        if (observation == null) {
-            return;
-        } else if (!(observation instanceof ObservationBuilder)) {
+        if (!(observation instanceof ObservationBuilder)) {
             throw new IllegalArgumentException("Unexpected observation type: " + observation);
         }
         ObservationBuilder builder = (ObservationBuilder) observation;
@@ -33,9 +31,7 @@ abstract class DispatcherBase extends InaosAgentDispatcher {
 
     @Override
     protected void doAttach(Object observation, String name, Class<?>[] types, Object[] arguments) {
-        if (observation == null) {
-            return;
-        } else if (!(observation instanceof ObservationBuilder)) {
+        if (!(observation instanceof ObservationBuilder)) {
             throw new IllegalArgumentException("Unexpected observation type: " + observation);
         }
         ObservationBuilder builder = (ObservationBuilder) observation;
@@ -44,9 +40,7 @@ abstract class DispatcherBase extends InaosAgentDispatcher {
 
     @Override
     protected void doCommit(Object observation) {
-        if (observation == null) {
-            return;
-        } else if (!(observation instanceof ObservationBuilder)) {
+        if (!(observation instanceof ObservationBuilder)) {
             throw new IllegalArgumentException("Unexpected observation type: " + observation);
         }
         doCommit(((ObservationBuilder) observation).toObservation());
