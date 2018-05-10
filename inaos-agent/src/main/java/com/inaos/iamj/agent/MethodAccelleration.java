@@ -102,7 +102,7 @@ class MethodAccelleration {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, devMode);
         if (annotation.getValue(SIMPLE_ENTRY).resolve(Boolean.class)) {
-            return advice.to(new TypeDescription.ForLoadedType(TrivialAdvice.class), typeDescription, classFileLocator);
+            return advice.to(new TypeDescription.ForLoadedType(TrivialEnterAdvice.class), typeDescription, classFileLocator);
         } else {
             return advice.to(typeDescription, classFileLocator);
         }

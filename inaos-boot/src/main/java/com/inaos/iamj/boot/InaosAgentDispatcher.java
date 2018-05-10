@@ -4,37 +4,40 @@ public abstract class InaosAgentDispatcher {
 
     public static volatile InaosAgentDispatcher dispatcher;
 
-    public static Object serialize(Class<?>[] types, Object[] values) {
+    public static Object observe(String name) {
         InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
-        if (dispatcher == null) {
-            // Do not return null to avoid skip in case of incorrect setup.
-            return new Object();
+        if (dispatcher != null) {
+            dispatcher.doObserve(name);
         }
-        return dispatcher.accept(types, values);
+        return null;
     }
 
-    public static void serialize(String name, Object entry,
-                                 String dispatcherName, String methodName,
-                                 Class<?>[] argumentTypes, Object[] argumentValues) {
-        serialize(name, entry, dispatcherName, methodName, void.class, argumentTypes, null, argumentValues);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static void serialize(String name, Object entry,
-                                 String dispatcherName, String methodName,
-                                 Class<?> returnType, Class<?>[] argumentTypes,
-                                 Object returnValue, Object[] argumentValues) {
+    public static void attach(Object observation, String name, Class<?> type, Object argument) {
         InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
-        if (dispatcher == null) {
-            return;
+        if (dispatcher != null) {
+            dispatcher.doAttach(observation, name, type, argument);
         }
-        dispatcher.accept(name, entry, dispatcherName, methodName, returnType, argumentTypes, returnValue, argumentValues);
     }
 
-    protected abstract Object accept(Class<?>[] types, Object[] arguments);
+    public static void attach(Object observation, String name, Class<?>[] types, Object[] arguments) {
+        InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
+        if (dispatcher != null) {
+            dispatcher.doAttach(observation, name, types, arguments);
+        }
+    }
 
-    protected abstract void accept(String name, Object entry,
-                                   String dispatcherName, String methodName,
-                                   Class<?> returnType, Class<?>[] argumentTypes,
-                                   Object returnValue, Object[] argumentValues);
+    public static void commit(Object observation) {
+        InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
+        if (dispatcher != null) {
+            dispatcher.doCommit(observation);
+        }
+    }
+
+    protected abstract Object doObserve(String name);
+
+    protected abstract void doAttach(Object observation, String name, Class<?> type, Object argument);
+
+    protected abstract void doAttach(Object observation, String name, Class<?>[] types, Object[] arguments);
+
+    protected abstract void doCommit(Object observation);
 }

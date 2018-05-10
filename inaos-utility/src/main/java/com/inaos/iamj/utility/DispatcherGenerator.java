@@ -18,21 +18,21 @@ class DispatcherGenerator {
             return;
         }
 
-        MethodSpec.Builder methodBuilder = MethodSpec
-                .methodBuilder(observation.getMethodName())
-                .addModifiers(Modifier.STATIC, Modifier.NATIVE)
-                .returns(observation.getSerializedReturn() == null ? TypeName.VOID : of(observation.getSerializedReturn().getTypes()[0]));
-
-        int index = 0;
-        for (String argumentType : observation.getSerializedArguments().getTypes()) {
-            methodBuilder = methodBuilder.addParameter(of(argumentType), "arg" + index++);
-        }
-
-        ClassName className = ClassName.bestGuess(observation.getDispatcherName());
-        TypeSpec dispatcher = TypeSpec.classBuilder(className).addMethod(methodBuilder.build()).build();
-        JavaFile javaFile = JavaFile.builder(className.packageName(), dispatcher).build();
-
-        javaFile.writeTo(folder);
+//        MethodSpec.Builder methodBuilder = MethodSpec
+//                .methodBuilder(observation.getMethodName())
+//                .addModifiers(Modifier.STATIC, Modifier.NATIVE)
+//                .returns(observation.getSerializedReturn() == null ? TypeName.VOID : of(observation.getSerializedReturn().getTypes()[0]));
+//
+//        int index = 0;
+//        for (String argumentType : observation.getSerializedArguments().getTypes()) {
+//            methodBuilder = methodBuilder.addParameter(of(argumentType), "arg" + index++);
+//        }
+//
+//        ClassName className = ClassName.bestGuess(observation.getDispatcherName());
+//        TypeSpec dispatcher = TypeSpec.classBuilder(className).addMethod(methodBuilder.build()).build();
+//        JavaFile javaFile = JavaFile.builder(className.packageName(), dispatcher).build();
+//
+//        javaFile.writeTo(folder);
     }
 
     private static TypeName of(String name) {

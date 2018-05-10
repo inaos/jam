@@ -9,6 +9,8 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Acceleration {
 
+    String ARGUMENTS = "arguments", ORIGINAL_ARGUMENTS = "original_arguments", RETURN = "return";
+
     Class<?> type();
 
     String method();
