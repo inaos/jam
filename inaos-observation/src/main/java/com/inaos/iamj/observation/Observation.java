@@ -5,6 +5,8 @@ import java.util.Map;
 
 public class Observation implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     private final String name;
 
     private final Map<String, SerializedValue> values;

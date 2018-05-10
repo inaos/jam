@@ -161,7 +161,9 @@ public class InaosAgent {
                         for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, ClassLoadingStrategy.Default.INJECTION);
                         }
-                        destructions.addAll(binaries.destructions);
+                        if (!isDevMode) {
+                            destructions.addAll(binaries.destructions);
+                        }
                         return builder.visit(accelleration.advice(isDevMode).on(accelleration.method()));
                     }
                 });
