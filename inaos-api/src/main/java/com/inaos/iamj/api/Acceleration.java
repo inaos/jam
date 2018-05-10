@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Acceleration {
 
-    String ARGUMENTS = "arguments", ORIGINAL_ARGUMENTS = "original_arguments", RETURN = "return";
+    String ARGUMENTS = "arguments", TRANSFORMED_ARGUMENTS = "transformed_arguments", RETURN = "return";
 
     Class<?> type();
 
