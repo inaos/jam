@@ -168,7 +168,7 @@ public class InaosAgent {
                         }
                         return builder.visit(accelleration.advice(isDevMode).on(accelleration.method()));
                     }
-                });
+                }).asDecorator();
             }
 
             return agentBuilder.installOn(instrumentation);
