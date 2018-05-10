@@ -1,6 +1,5 @@
 package com.inaos.iamj.agent;
 
-import com.esotericsoftware.kryo.Kryo;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
@@ -16,6 +15,9 @@ import java.io.OutputStream;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.net.URL;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
 public class InaosAgent {
@@ -23,21 +25,28 @@ public class InaosAgent {
     private static final ByteBuddy BYTE_BUDDY = new ByteBuddy();
 
     private static final String OS_NAME = getSystemProperty("os.name");
+
     private static final String OS_ARCH = getSystemProperty("os.arch");
 
     private static final String OS_NAME_WINDOWS_PREFIX = "Windows";
 
     private static final boolean IS_OS_LINUX = isOsMatchesName("Linux") || isOsMatchesName("LINUX");
+
     private static final boolean IS_OS_WINDOWS = isOsMatchesName(OS_NAME_WINDOWS_PREFIX);
+
     private static final boolean IS_OS_ARCH_64 = OS_ARCH.equals("amd64");
+
     private static final boolean IS_OS_ARCH_32 = OS_ARCH.equals("x86");
 
     private static final String NATIVE_SHARED_OBJ_EXT;
+
     private static final String NATIVE_SHARED_OBJ_PREFIX;
+
     private static final String NATIVE_SHARED_OBJ_FOLDER;
 
     private static final long MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
-    private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024*1024; // 1 MB
+
+    private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024 * 1024; // 1 MB
 
     static {
         if (IS_OS_LINUX) {
@@ -131,6 +140,16 @@ public class InaosAgent {
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
 
+            final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    for (Runnable destruction : destructions) {
+                        destruction.run();
+                    }
+                }
+            });
+
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
                 agentBuilder = agentBuilder.type(accelleration.type()).transform(new AgentBuilder.Transformer() {
                     @Override
@@ -138,9 +157,11 @@ public class InaosAgent {
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
-                        for (DynamicType.Unloaded<?> type : accelleration.binaries(BYTE_BUDDY, NATIVE_SHARED_OBJ_FOLDER, NATIVE_SHARED_OBJ_PREFIX, NATIVE_SHARED_OBJ_EXT)) {
+                        MethodAccelleration.Binaries binaries = accelleration.binaries(BYTE_BUDDY, NATIVE_SHARED_OBJ_FOLDER, NATIVE_SHARED_OBJ_PREFIX, NATIVE_SHARED_OBJ_EXT);
+                        for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, ClassLoadingStrategy.Default.INJECTION);
                         }
+                        destructions.addAll(binaries.destructions);
                         return builder.visit(accelleration.advice(isDevMode).on(accelleration.method()));
                     }
                 });
@@ -157,15 +178,15 @@ public class InaosAgent {
     private static void registerDispatcher(File sample) throws Exception {
         Object which;
         if (sample == null) {
-        	which = Class.forName("com.inaos.iamj.agent.DispatcherToConsole")
+            which = Class.forName("com.inaos.iamj.agent.DispatcherToConsole")
                     .getConstructor()
                     .newInstance();
         } else {
-        	which = Class.forName("com.inaos.iamj.agent.DispatcherToFile")
+            which = Class.forName("com.inaos.iamj.agent.DispatcherToFile")
                     .getConstructor(File.class, long.class, long.class)
-        			.newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
+                    .newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
         }
-    	Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
+        Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
         Field instance = dispatcher.getField("dispatcher");
         instance.set(null, which);
     }
