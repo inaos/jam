@@ -1,6 +1,7 @@
 package com.inaos.iamj.agent;
 
 import com.inaos.iamj.api.Acceleration;
+import com.inaos.iamj.api.DevMode;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.annotation.AnnotationDescription;
@@ -27,7 +28,7 @@ import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
 
-    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, RETAIN_ARGUMENTS, DISPATCHER, BINARY, SYSTEM_LOAD;
+    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, SIMPLE_ENTRY, DISPATCHER, BINARY, SYSTEM_LOAD;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -35,7 +36,7 @@ class MethodAccelleration {
         METHOD = accelleration.getDeclaredMethods().filter(named("method")).getOnly();
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
-        RETAIN_ARGUMENTS = accelleration.getDeclaredMethods().filter(named("retainArguments")).getOnly();
+        SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
@@ -99,10 +100,12 @@ class MethodAccelleration {
 
     Advice advice(boolean devMode) {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
-        Class<?> enterAdvice = annotation.getValue(RETAIN_ARGUMENTS).resolve(Boolean.class) ? AdviceThatRetainsArguments.class : AdviceThatIsTrivial.class;
-        return Advice.withCustomMapping()
-                .bind(DevMode.class, devMode)
-                .to(new TypeDescription.ForLoadedType(enterAdvice), typeDescription, classFileLocator);
+        Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, devMode);
+        if (annotation.getValue(SIMPLE_ENTRY).resolve(Boolean.class)) {
+            return advice.to(new TypeDescription.ForLoadedType(TrivialAdvice.class), typeDescription, classFileLocator);
+        } else {
+            return advice.to(typeDescription, classFileLocator);
+        }
     }
 
     ElementMatcher<TypeDescription> type() {

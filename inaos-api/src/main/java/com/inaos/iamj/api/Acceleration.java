@@ -17,7 +17,7 @@ public @interface Acceleration {
 
     Library[] libraries() default {};
 
-    boolean retainArguments() default false;
+    boolean simpleEntry() default false;
 
     @Target(value = {})
     @interface Library {
