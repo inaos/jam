@@ -141,14 +141,16 @@ public class InaosAgent {
                     .disableClassFormatChanges();
 
             final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    for (Runnable destruction : destructions) {
-                        destruction.run();
+            if (!isDevMode) {
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    @Override
+                    public void run() {
+                        for (Runnable destruction : destructions) {
+                            destruction.run();
+                        }
                     }
-                }
-            });
+                });
+            }
 
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
                 agentBuilder = agentBuilder.type(accelleration.type()).transform(new AgentBuilder.Transformer() {
