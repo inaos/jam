@@ -1,6 +1,7 @@
 package com.inaos.iamj.agent;
 
 import com.inaos.iamj.api.Acceleration;
+import com.inaos.iamj.api.DevMode;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.annotation.AnnotationDescription;
@@ -8,11 +9,14 @@ import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.ClassFileLocator;
 import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.implementation.Implementation;
 import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.implementation.StubMethod;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -24,7 +28,7 @@ import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
 
-    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, RETAIN_ARGUMENTS, DISPATCHER, BINARY, SYSTEM_LOAD;
+    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, SIMPLE_ENTRY, DISPATCHER, BINARY, SYSTEM_LOAD;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -32,7 +36,7 @@ class MethodAccelleration {
         METHOD = accelleration.getDeclaredMethods().filter(named("method")).getOnly();
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
-        RETAIN_ARGUMENTS = accelleration.getDeclaredMethods().filter(named("retainArguments")).getOnly();
+        SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
@@ -42,7 +46,15 @@ class MethodAccelleration {
 
     static List<MethodAccelleration> findAll(URL url) {
         ClassLoader classLoader = new URLClassLoader(new URL[]{url});
-        ClassFileLocator classFileLocator = ClassFileLocator.ForClassLoader.of(classLoader);
+        ClassFileLocator classFileLocator;
+        if (Acceleration.class.getClassLoader() == classLoader) {
+            classFileLocator = ClassFileLocator.ForClassLoader.of(classLoader);
+        } else {
+            classFileLocator = new ClassFileLocator.Compound(
+                    ClassFileLocator.ForClassLoader.of(classLoader),
+                    ClassFileLocator.ForClassLoader.of(Acceleration.class.getClassLoader())
+            );
+        }
         TypePool typePool = TypePool.Default.of(classFileLocator);
 
         List<MethodAccelleration> accellerations = new ArrayList<MethodAccelleration>();
@@ -88,10 +100,12 @@ class MethodAccelleration {
 
     Advice advice(boolean devMode) {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
-        Class<?> enterAdvice = annotation.getValue(RETAIN_ARGUMENTS).resolve(Boolean.class) ? AdviceThatRetainsArguments.class : AdviceThatIsTrivial.class;
-        return Advice.withCustomMapping()
-                .bind(DevMode.class, devMode)
-                .to(new TypeDescription.ForLoadedType(enterAdvice), typeDescription, classFileLocator);
+        Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, devMode);
+        if (annotation.getValue(SIMPLE_ENTRY).resolve(Boolean.class)) {
+            return advice.to(new TypeDescription.ForLoadedType(TrivialEnterAdvice.class), typeDescription, classFileLocator);
+        } else {
+            return advice.to(typeDescription, classFileLocator);
+        }
     }
 
     ElementMatcher<TypeDescription> type() {
@@ -104,9 +118,10 @@ class MethodAccelleration {
         return named(annotation.getValue(METHOD).resolve(String.class)).and(takesArguments(annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)));
     }
 
-    List<DynamicType.Unloaded<?>> binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension) {
+    Binaries binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
+        List<Runnable> destructions = new ArrayList<Runnable>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
             String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
             InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
@@ -127,11 +142,70 @@ class MethodAccelleration {
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
-            types.add(byteBuddy.redefine(library.getValue(DISPATCHER).resolve(TypeDescription.class), classFileLocator)
+            TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
+            Implementation initialization = StubMethod.INSTANCE;
+            for (MethodDescription initMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Init.class))) {
+                if (!initMethod.isStatic() || !initMethod.getParameters().isEmpty() || !initMethod.getReturnType().represents(void.class)) {
+                    throw new IllegalStateException("Stateful initializer method: " + initMethod);
+                }
+                initialization = MethodCall.invoke(initMethod).andThen(initialization);
+            }
+            List<String> destructionMethods = new ArrayList<String>();
+            for (MethodDescription destroyMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Destroy.class))) {
+                if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
+                    throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
+                }
+                destructionMethods.add(destroyMethod.getName());
+            }
+            if (!destructionMethods.isEmpty()) {
+                destructions.add(new Destruction(classLoader, dispatcher.getName(), destructionMethods));
+            }
+            types.add(byteBuddy.redefine(dispatcher, classFileLocator)
                     .invokable(isTypeInitializer())
-                    .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()))
+                    .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()).andThen(initialization))
                     .make());
         }
-        return types;
+        return new Binaries(types, destructions);
+    }
+
+    static class Binaries {
+
+        final List<DynamicType.Unloaded<?>> types;
+
+        final List<Runnable> destructions;
+
+        private Binaries(List<DynamicType.Unloaded<?>> types, List<Runnable> destructions) {
+            this.types = types;
+            this.destructions = destructions;
+        }
+    }
+
+    private static class Destruction implements Runnable {
+
+        private final ClassLoader classLoader;
+
+        private final String type;
+
+        private final List<String> destroyMethods;
+
+        private Destruction(ClassLoader classLoader, String type, List<String> destroyMethods) {
+            this.classLoader = classLoader;
+            this.type = type;
+            this.destroyMethods = destroyMethods;
+        }
+
+        @Override
+        public void run() {
+            try {
+                Class<?> dispatcher = Class.forName(type, false, classLoader);
+                for (String destroyMethod : destroyMethods) {
+                    Method method = dispatcher.getDeclaredMethod(destroyMethod);
+                    method.setAccessible(true);
+                    method.invoke(null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

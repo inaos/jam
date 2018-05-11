@@ -1,10 +1,7 @@
 package com.inaos.iamj.agent;
 
-import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
-import com.inaos.iamj.boot.InaosAgentDispatcher;
 import com.inaos.iamj.observation.Observation;
-import com.inaos.iamj.observation.SerializedValue;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,12 +11,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
-public class DispatcherToFile extends InaosAgentDispatcher {
+public class DispatcherToFile extends DispatcherBase {
 
-    private final Kryo kryo = new Kryo();
     private final File target;
 
     private final long maxObservationCount, maxObservationBytes;
+
     private final ConcurrentMap<String, AtomicLong> observationCount = new ConcurrentHashMap<String, AtomicLong>(), observationBytes = new ConcurrentHashMap<String, AtomicLong>();
 
     public DispatcherToFile(File target, long maxObservationCount, long maxObservationBytes) {
@@ -29,34 +26,24 @@ public class DispatcherToFile extends InaosAgentDispatcher {
     }
 
     @Override
-    protected Object accept(Class<?>[] types, Object[] arguments) {
-        return SerializedValue.make(kryo, types, arguments);
+    protected boolean suppressSample(String name) {
+        if (!observationCount.containsKey(name)) {
+            observationCount.putIfAbsent(name, new AtomicLong());
+        }
+        if (!observationBytes.containsKey(name)) {
+            observationBytes.putIfAbsent(name, new AtomicLong());
+        }
+        AtomicLong sum = observationBytes.get(name);
+        return observationCount.get(name).incrementAndGet() > maxObservationCount || sum.get() > maxObservationBytes;
     }
 
     @Override
-    protected void accept(String name,
-                          Object entry,
-                          String dispatcherName,
-                          String methodName,
-                          Class<?> returnType,
-                          Class<?>[] argumentTypes,
-                          Object returnValue,
-                          Object[] argumentValues) {
-        observationCount.putIfAbsent(name, new AtomicLong());
-        if (observationCount.get(name).incrementAndGet() > maxObservationCount) {
-            return;
-        }
-        observationBytes.putIfAbsent(name, new AtomicLong());
-        AtomicLong sum = observationBytes.get(name);
-        if (sum.get() > maxObservationBytes) {
-            return;
-        }
+    protected synchronized void doCommit(Observation observation) {
+        AtomicLong sum = observationBytes.get(observation.getName());
         try {
-            Observation o = new Observation(name, dispatcherName, methodName,
-                    SerializedValue.make(kryo, argumentTypes, argumentValues), (SerializedValue) entry, SerializedValue.make(kryo, returnType, returnValue));
             Output out = new Output(new ByteCountingStream(new FileOutputStream(target, true), sum));
             try {
-                kryo.writeClassAndObject(out, o);
+                kryo.writeObject(out, observation);
             } finally {
                 out.close();
             }
@@ -68,6 +55,7 @@ public class DispatcherToFile extends InaosAgentDispatcher {
     private static class ByteCountingStream extends OutputStream {
 
         private final OutputStream out;
+
         private final AtomicLong sum;
 
         private long count;

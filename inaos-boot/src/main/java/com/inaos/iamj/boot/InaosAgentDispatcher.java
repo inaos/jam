@@ -2,39 +2,45 @@ package com.inaos.iamj.boot;
 
 public abstract class InaosAgentDispatcher {
 
+    private static final Object NOOP = new Object();
+
     public static volatile InaosAgentDispatcher dispatcher;
 
-    public static Object serialize(Class<?>[] types, Object[] values) {
+    public static Object observe(String name) {
         InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
-        if (dispatcher == null) {
-            // Do not return null to avoid skip in case of incorrect setup.
-            return new Object();
+        Object observation = null;
+        if (dispatcher != null) {
+            observation = dispatcher.doObserve(name);
         }
-        return dispatcher.accept(types, values);
+        return observation == null ? NOOP : observation;
     }
 
-    public static void serialize(String name, Object entry,
-                                 String dispatcherName, String methodName,
-                                 Class<?>[] argumentTypes, Object[] argumentValues) {
-        serialize(name, entry, dispatcherName, methodName, void.class, argumentTypes, null, argumentValues);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static void serialize(String name, Object entry,
-                                 String dispatcherName, String methodName,
-                                 Class<?> returnType, Class<?>[] argumentTypes,
-                                 Object returnValue, Object[] argumentValues) {
+    public static void attach(Object observation, String name, Class<?> type, Object argument) {
         InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
-        if (dispatcher == null) {
-            return;
+        if (dispatcher != null && observation != NOOP) {
+            dispatcher.doAttach(observation, name, type, argument);
         }
-        dispatcher.accept(name, entry, dispatcherName, methodName, returnType, argumentTypes, returnValue, argumentValues);
     }
 
-    protected abstract Object accept(Class<?>[] types, Object[] arguments);
+    public static void attach(Object observation, String name, Class<?>[] types, Object[] arguments) {
+        InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
+        if (dispatcher != null && observation != NOOP) {
+            dispatcher.doAttach(observation, name, types, arguments);
+        }
+    }
 
-    protected abstract void accept(String name, Object entry,
-                                   String dispatcherName, String methodName,
-                                   Class<?> returnType, Class<?>[] argumentTypes,
-                                   Object returnValue, Object[] argumentValues);
+    public static void commit(Object observation) {
+        InaosAgentDispatcher dispatcher = InaosAgentDispatcher.dispatcher;
+        if (dispatcher != null && observation != NOOP) {
+            dispatcher.doCommit(observation);
+        }
+    }
+
+    protected abstract Object doObserve(String name);
+
+    protected abstract void doAttach(Object observation, String name, Class<?> type, Object argument);
+
+    protected abstract void doAttach(Object observation, String name, Class<?>[] types, Object[] arguments);
+
+    protected abstract void doCommit(Object observation);
 }
