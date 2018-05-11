@@ -1,4 +1,5 @@
 build
+build_vs
 
 # Compiled class file
 *.class
