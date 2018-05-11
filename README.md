@@ -7,7 +7,7 @@
 Since we can not add/replace constructors if a class was already loaded we can not offer to replace a hot constructor.
 However, we can only hope that if a constructor is expensive the actual work would be sourced to another method which we could 
 replace instead. If this is also not possible we have to do the replacement more coarse grained by replaceing also the code 
-which instanstiates the object whith the hot constructor.
+which instanstiates the object with the hot constructor.
 
 ## Getting started with a new project
 
