@@ -136,7 +136,7 @@ public class InaosAgent {
             }
 
             AgentBuilder agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
-//                    .with(AgentBuilder.Listener.StreamWriting.toSystemError())
+                    //.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
 
@@ -161,7 +161,7 @@ public class InaosAgent {
                                                             JavaModule module) {
                         MethodAccelleration.Binaries binaries = accelleration.binaries(BYTE_BUDDY, NATIVE_SHARED_OBJ_FOLDER, NATIVE_SHARED_OBJ_PREFIX, NATIVE_SHARED_OBJ_EXT);
                         for (DynamicType.Unloaded<?> type : binaries.types) {
-                            type.load(classLoader, ClassLoadingStrategy.Default.INJECTION);
+                            type.load(classLoader, ClassLoadingStrategy.Default.INJECTION.allowExistingTypes());
                         }
                         if (!isDevMode) {
                             destructions.addAll(binaries.destructions);
