@@ -19,10 +19,7 @@ import java.io.*;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -49,15 +46,16 @@ class MethodAccelleration {
 
     static List<MethodAccelleration> findAll(URL url) {
         ClassLoader classLoader = new URLClassLoader(new URL[]{url});
-        ClassFileLocator classFileLocator;
-        if (Acceleration.class.getClassLoader() == classLoader) {
-            classFileLocator = ClassFileLocator.ForClassLoader.of(classLoader);
-        } else {
-            classFileLocator = new ClassFileLocator.Compound(
-                    ClassFileLocator.ForClassLoader.of(classLoader),
-                    ClassFileLocator.ForClassLoader.of(Acceleration.class.getClassLoader())
-            );
+        Set<ClassLoader> classLoaders = Collections.newSetFromMap(new IdentityHashMap<ClassLoader, Boolean>());
+        classLoaders.add(classLoader);
+        classLoaders.add(Acceleration.class.getClassLoader());
+        classLoaders.add(Advice.class.getClassLoader());
+        List<ClassFileLocator> classFileLocators = new ArrayList<ClassFileLocator>();
+        for (ClassLoader loader : classLoaders) {
+            classFileLocators.add(ClassFileLocator.ForClassLoader.of(loader));
         }
+        ClassFileLocator classFileLocator = new ClassFileLocator.Compound(classFileLocators);
+
         TypePool typePool = TypePool.Default.of(classFileLocator);
 
         List<MethodAccelleration> accellerations = new ArrayList<MethodAccelleration>();
@@ -121,7 +119,7 @@ class MethodAccelleration {
         return named(annotation.getValue(METHOD).resolve(String.class)).and(takesArguments(annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)));
     }
 
-    Binaries binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension) {
+    Binaries binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassLoader userLoader) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         List<Runnable> destructions = new ArrayList<Runnable>();
@@ -161,7 +159,7 @@ class MethodAccelleration {
                 destructionMethods.add(destroyMethod.getName());
             }
             if (!destructionMethods.isEmpty()) {
-                destructions.add(new Destruction(classLoader, dispatcher.getName(), destructionMethods));
+                destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
             }
             types.add(byteBuddy.redefine(dispatcher, classFileLocator)
                     .invokable(isTypeInitializer())

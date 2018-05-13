@@ -161,7 +161,11 @@ public class InaosAgent {
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
-                        MethodAccelleration.Binaries binaries = accelleration.binaries(BYTE_BUDDY, NATIVE_SHARED_OBJ_FOLDER, NATIVE_SHARED_OBJ_PREFIX, NATIVE_SHARED_OBJ_EXT);
+                        MethodAccelleration.Binaries binaries = accelleration.binaries(BYTE_BUDDY,
+                                NATIVE_SHARED_OBJ_FOLDER,
+                                NATIVE_SHARED_OBJ_PREFIX,
+                                NATIVE_SHARED_OBJ_EXT,
+                                classLoader);
                         for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, classLoadingStrategy);
                         }
