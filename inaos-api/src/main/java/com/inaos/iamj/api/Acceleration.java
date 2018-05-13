@@ -21,6 +21,8 @@ public @interface Acceleration {
 
     boolean simpleEntry() default false;
 
+    Class<?>[] inline() default {};
+
     @Target(value = {})
     @interface Library {
 

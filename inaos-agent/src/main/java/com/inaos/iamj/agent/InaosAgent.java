@@ -5,6 +5,7 @@ import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
+import net.bytebuddy.dynamic.loading.ClassInjector;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.utility.JavaModule;
 
@@ -152,6 +153,7 @@ public class InaosAgent {
                 });
             }
 
+            final ClassLoadingStrategy<ClassLoader> classLoadingStrategy = ClassLoadingStrategy.Default.INJECTION.allowExistingTypes();
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
                 agentBuilder = agentBuilder.type(accelleration.type()).transform(new AgentBuilder.Transformer() {
                     @Override
@@ -161,9 +163,10 @@ public class InaosAgent {
                                                             JavaModule module) {
                         MethodAccelleration.Binaries binaries = accelleration.binaries(BYTE_BUDDY, NATIVE_SHARED_OBJ_FOLDER, NATIVE_SHARED_OBJ_PREFIX, NATIVE_SHARED_OBJ_EXT);
                         for (DynamicType.Unloaded<?> type : binaries.types) {
-                            type.load(classLoader, ClassLoadingStrategy.Default.INJECTION.allowExistingTypes());
+                            type.load(classLoader, classLoadingStrategy);
                         }
                         if (!isDevMode) {
+                            classLoadingStrategy.load(classLoader, accelleration.inlined());
                             destructions.addAll(binaries.destructions);
                         }
                         return builder.visit(accelleration.advice(isDevMode).on(accelleration.method()));
