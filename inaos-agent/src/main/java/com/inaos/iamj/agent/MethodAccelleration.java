@@ -20,7 +20,9 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -28,7 +30,7 @@ import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
 
-    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, SIMPLE_ENTRY, DISPATCHER, BINARY, SYSTEM_LOAD;
+    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, SIMPLE_ENTRY, DISPATCHER, BINARY, SYSTEM_LOAD, INLINE;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -37,6 +39,7 @@ class MethodAccelleration {
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
+        INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
@@ -166,6 +169,19 @@ class MethodAccelleration {
                     .make());
         }
         return new Binaries(types, destructions);
+    }
+
+    Map<TypeDescription, byte[]> inlined() {
+        Map<TypeDescription, byte[]> inlined = new HashMap<TypeDescription, byte[]>();
+        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
+        try {
+            for (TypeDescription inline : annotation.getValue(INLINE).resolve(TypeDescription[].class)) {
+                inlined.put(inline, classFileLocator.locate(inline.getName()).resolve());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return inlined;
     }
 
     static class Binaries {
