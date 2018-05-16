@@ -76,27 +76,27 @@
                             <relocations>
                                 <relocation>
                                     <pattern>net.bytebuddy</pattern>
-                                    <shadedPattern>com.inaos.iamj.shaded.bytebuddy</shadedPattern>
+                                    <shadedPattern>com.inaos.iamj.bytebuddy</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.esotericsoftware.kryo</pattern>
-                                    <shadedPattern>com.inaos.iamj.shaded.kryo</shadedPattern>
+                                    <shadedPattern>com.inaos.iamj.kryo</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.esotericsoftware.reflectasm</pattern>
-                                    <shadedPattern>com.inaos.iamj.shaded.reflectasm</shadedPattern>
+                                    <shadedPattern>com.inaos.iamj.reflectasm</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.esotericsoftware.minlog</pattern>
-                                    <shadedPattern>com.inaos.iamj.shaded.minlog</shadedPattern>
+                                    <shadedPattern>com.inaos.iamj.minlog</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.objectweb.asm</pattern>
-                                    <shadedPattern>com.inaos.iamj.shaded.asm</shadedPattern>
+                                    <shadedPattern>com.inaos.iamj.asm</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>org.objenesis</pattern>
-                                    <shadedPattern>com.inaos.iamj.shaded.objenesis</shadedPattern>
+                                    <shadedPattern>com.inaos.iamj.objenesis</shadedPattern>
                                 </relocation>
                             </relocations>
                             <transformers>
