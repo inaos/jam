@@ -18,6 +18,5 @@
             <version>${kryo.version}</version>
         </dependency>
     </dependencies>
-
-
+    
 </project>

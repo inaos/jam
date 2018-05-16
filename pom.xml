@@ -13,11 +13,13 @@
         <module>inaos-observation</module>
         <module>inaos-agent</module>
         <module>inaos-attach</module>
-        <module>inaos-example-app</module>
+        <module>inaos-utility</module>
+        <module>inaos-test</module>
         <module>inaos-example-lib</module>
+        <module>inaos-example-app</module>
 		<module>inaos-example-utility</module>
 		<module>inaos-example-bench</module>
-        <module>inaos-utility</module>
+        <module>inaos-example-test</module>
     </modules>
 
     <packaging>pom</packaging>
