@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>inaos</groupId>
-            <artifactId>inaos-observation-kryo</artifactId>
+            <artifactId>inaos-observation</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -27,6 +27,11 @@
             <artifactId>inaos-boot</artifactId>
             <version>${project.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.esotericsoftware</groupId>
+            <artifactId>kryo</artifactId>
+            <version>${kryo.version}</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>
@@ -73,10 +78,10 @@
                                     <pattern>net.bytebuddy</pattern>
                                     <shadedPattern>com.inaos.iamj.shaded.bytebuddy</shadedPattern>
                                 </relocation>
-                                <!--<relocation>-->
-                                    <!--<pattern>com.esotericsoftware.kryo</pattern>-->
-                                    <!--<shadedPattern>com.inaos.iamj.shaded.kryo</shadedPattern>-->
-                                <!--</relocation>-->
+                                <relocation>
+                                    <pattern>com.esotericsoftware.kryo</pattern>
+                                    <shadedPattern>com.inaos.iamj.shaded.kryo</shadedPattern>
+                                </relocation>
                                 <relocation>
                                     <pattern>com.esotericsoftware.reflectasm</pattern>
                                     <shadedPattern>com.inaos.iamj.shaded.reflectasm</shadedPattern>
@@ -93,10 +98,6 @@
                                     <pattern>org.objenesis</pattern>
                                     <shadedPattern>com.inaos.iamj.shaded.objenesis</shadedPattern>
                                 </relocation>
-                                <!--<relocation>-->
-                                    <!--<pattern>com.inaos.iamj.observation.kryo</pattern>-->
-                                    <!--<shadedPattern>com.inaos.iamj.shaded.observation.kryo</shadedPattern>-->
-                                <!--</relocation>-->
                             </relocations>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">

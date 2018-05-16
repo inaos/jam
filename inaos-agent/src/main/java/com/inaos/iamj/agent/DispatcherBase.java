@@ -3,12 +3,10 @@ package com.inaos.iamj.agent;
 import com.esotericsoftware.kryo.Kryo;
 import com.inaos.iamj.boot.InaosAgentDispatcher;
 import com.inaos.iamj.observation.Observation;
-import com.inaos.imaj.observation.kryo.KryoSerializer;
 
 abstract class DispatcherBase extends InaosAgentDispatcher {
 
     protected final Kryo kryo = new Kryo();
-    protected final KryoSerializer serializer = new KryoSerializer(kryo);
 
     protected boolean suppressSample(String name) {
         return false;
@@ -28,7 +26,7 @@ abstract class DispatcherBase extends InaosAgentDispatcher {
             throw new IllegalArgumentException("Unexpected observation type: " + observation);
         }
         ObservationBuilder builder = (ObservationBuilder) observation;
-        builder.serialize(serializer, name, type, argument);
+        builder.serialize(kryo, name, type, argument);
     }
 
     @Override
@@ -37,7 +35,7 @@ abstract class DispatcherBase extends InaosAgentDispatcher {
             throw new IllegalArgumentException("Unexpected observation type: " + observation);
         }
         ObservationBuilder builder = (ObservationBuilder) observation;
-        builder.serialize(serializer, name, types, arguments);
+        builder.serialize(kryo, name, types, arguments);
     }
 
     @Override
