@@ -9,6 +9,19 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>inaos-observation</artifactId>
+    <artifactId>inaos-observation-kryo</artifactId>
+
+    <dependencies>
+        <dependency>
+            <groupId>inaos</groupId>
+            <artifactId>inaos-observation</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.esotericsoftware</groupId>
+            <artifactId>kryo</artifactId>
+            <version>${kryo.version}</version>
+        </dependency>
+    </dependencies>
 
 </project>

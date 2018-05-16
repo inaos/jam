@@ -20,6 +20,7 @@
 		<module>inaos-example-utility</module>
 		<module>inaos-example-bench</module>
         <module>inaos-example-test</module>
+        <module>inaos-observation-kryo</module>
     </modules>
 
     <packaging>pom</packaging>

@@ -14,7 +14,7 @@
     <dependencies>
         <dependency>
             <groupId>inaos</groupId>
-            <artifactId>inaos-observation</artifactId>
+            <artifactId>inaos-observation-kryo</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

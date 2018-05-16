@@ -1,8 +1,8 @@
 package com.inaos.iamj.agent;
 
-import com.esotericsoftware.kryo.Kryo;
 import com.inaos.iamj.observation.Observation;
 import com.inaos.iamj.observation.SerializedValue;
+import com.inaos.imaj.observation.kryo.KryoSerializer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,18 +18,18 @@ class ObservationBuilder {
         values = new HashMap<String, SerializedValue>();
     }
 
-    void serialize(Kryo kryo, String name, Class<?> type, Object argument) {
+    void serialize(KryoSerializer serializer, String name, Class<?> type, Object argument) {
         if (values.containsKey(name)) {
             throw new IllegalArgumentException("Key " + name + " is already registered");
         }
-        values.put(name, SerializedValue.make(kryo, type, argument));
+        values.put(name, serializer.make(type, argument));
     }
 
-    void serialize(Kryo kryo, String name, Class<?>[] types, Object[] arguments) {
+    void serialize(KryoSerializer serializer, String name, Class<?>[] types, Object[] arguments) {
         if (values.containsKey(name)) {
             throw new IllegalArgumentException("Key " + name + " is already registered");
         }
-        values.put(name, SerializedValue.make(kryo, types, arguments));
+        values.put(name, serializer.make(types, arguments));
     }
 
     Observation toObservation() {
