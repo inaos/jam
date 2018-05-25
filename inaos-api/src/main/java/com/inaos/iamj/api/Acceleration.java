@@ -23,6 +23,8 @@ public @interface Acceleration {
 
     Class<?>[] inline() default {};
 
+    String expectedName() default "";
+
     @Target(value = {})
     @interface Library {
 

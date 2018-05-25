@@ -86,6 +86,7 @@ public class InaosAgent {
     public static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
         try {
             Boolean devMode = null;
+            Boolean expectedName = null;
             URL url = null;
             File sample = null;
 
@@ -118,6 +119,8 @@ public class InaosAgent {
                     throw new IllegalArgumentException();
                 } else if (pair[0].equals("devMode")) {
                     devMode = Boolean.parseBoolean(pair[1]);
+                } else if (pair[0].equals("expectedName")) {
+                    expectedName = Boolean.parseBoolean(pair[1]);
                 } else if (pair[0].equals("library")) {
                     url = new URL(pair[1]);
                 } else if (pair[0].equals("sample")) {
@@ -135,6 +138,7 @@ public class InaosAgent {
             if (isDevMode) {
                 registerDispatcher(sample);
             }
+            final boolean isExpectedName = expectedName == null ? true : expectedName;
 
             AgentBuilder agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
                     //.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
@@ -155,7 +159,7 @@ public class InaosAgent {
 
             final ClassLoadingStrategy<ClassLoader> classLoadingStrategy = ClassLoadingStrategy.Default.INJECTION.allowExistingTypes();
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
-                agentBuilder = agentBuilder.type(accelleration.type()).transform(new AgentBuilder.Transformer() {
+                agentBuilder = agentBuilder.type(accelleration.type(!isExpectedName)).transform(new AgentBuilder.Transformer() {
                     @Override
                     public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
                                                             TypeDescription typeDescription,

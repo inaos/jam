@@ -3,6 +3,7 @@ package com.inaos.iamj.agent;
 import com.inaos.iamj.api.Acceleration;
 import com.inaos.iamj.api.DevMode;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.annotation.AnnotationDescription;
 import net.bytebuddy.description.method.MethodDescription;
@@ -27,7 +28,16 @@ import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
 
-    private static final MethodDescription.InDefinedShape TYPE, METHOD, PARAMETERS, LIBRARIES, SIMPLE_ENTRY, DISPATCHER, BINARY, SYSTEM_LOAD, INLINE;
+    private static final MethodDescription.InDefinedShape TYPE,
+            METHOD,
+            PARAMETERS,
+            LIBRARIES,
+            SIMPLE_ENTRY,
+            DISPATCHER,
+            BINARY,
+            SYSTEM_LOAD,
+            INLINE,
+            EXPECTED_NAME;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -37,6 +47,7 @@ class MethodAccelleration {
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
+        EXPECTED_NAME = accelleration.getDeclaredMethods().filter(named("expectedName")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
@@ -114,9 +125,15 @@ class MethodAccelleration {
         }
     }
 
-    ElementMatcher<TypeDescription> type() {
+    AgentBuilder.RawMatcher type(boolean noExpectedName) {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
-        return is(annotation.getValue(TYPE).resolve(TypeDescription.class));
+        AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(is(annotation.getValue(TYPE).resolve(TypeDescription.class)));
+        String expectedName = annotation.getValue(EXPECTED_NAME).resolve(String.class);
+        if (noExpectedName && expectedName.isEmpty()) {
+            return matcher;
+        } else {
+            return new CodeSourceMatcher(matcher, expectedName);
+        }
     }
 
     ElementMatcher<MethodDescription> method() {
