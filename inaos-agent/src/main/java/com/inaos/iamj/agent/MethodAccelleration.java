@@ -37,7 +37,7 @@ class MethodAccelleration {
             BINARY,
             SYSTEM_LOAD,
             INLINE,
-            EXPECTED_NAME;
+            EXPECTED_NAMES;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -47,7 +47,7 @@ class MethodAccelleration {
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
-        EXPECTED_NAME = accelleration.getDeclaredMethods().filter(named("expectedName")).getOnly();
+        EXPECTED_NAMES = accelleration.getDeclaredMethods().filter(named("expectedNames")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
@@ -128,11 +128,11 @@ class MethodAccelleration {
     AgentBuilder.RawMatcher type(boolean noExpectedName) {
         AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(is(annotation.getValue(TYPE).resolve(TypeDescription.class)));
-        String expectedName = annotation.getValue(EXPECTED_NAME).resolve(String.class);
-        if (noExpectedName && expectedName.isEmpty()) {
+        String[] expectedNames = annotation.getValue(EXPECTED_NAMES).resolve(String[].class);
+        if (noExpectedName && expectedNames.length == 0) {
             return matcher;
         } else {
-            return new CodeSourceMatcher(matcher, expectedName);
+            return new CodeSourceMatcher(matcher, Arrays.asList(expectedNames));
         }
     }
 

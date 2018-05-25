@@ -8,14 +8,15 @@ import java.io.File;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.ProtectionDomain;
+import java.util.List;
 
 class CodeSourceMatcher implements AgentBuilder.RawMatcher {
 
     private final AgentBuilder.RawMatcher previous;
 
-    private final String expected;
+    private final List<String> expected;
 
-    CodeSourceMatcher(AgentBuilder.RawMatcher previous, String expected) {
+    CodeSourceMatcher(AgentBuilder.RawMatcher previous, List<String> expected) {
         this.previous = previous;
         this.expected = expected;
     }
@@ -41,7 +42,11 @@ class CodeSourceMatcher implements AgentBuilder.RawMatcher {
                 file = new File(location.getPath());
             }
             String name = file.getName();
-            return name.equals(expected);
+            for (String candidate : expected) {
+                if (name.equals(candidate)) {
+                    return true;
+                }
+            }
         }
         return false;
     }
