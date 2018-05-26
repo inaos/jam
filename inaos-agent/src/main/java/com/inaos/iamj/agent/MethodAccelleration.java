@@ -1,7 +1,6 @@
 package com.inaos.iamj.agent;
 
 import com.inaos.iamj.api.Acceleration;
-import com.inaos.iamj.api.DevMode;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -67,7 +66,7 @@ class MethodAccelleration {
         }
         ClassFileLocator classFileLocator = new ClassFileLocator.Compound(classFileLocators);
 
-        TypePool typePool = TypePool.Default.of(classFileLocator);
+        TypePool typePool = TypePool.Default.WithLazyResolution.of(classFileLocator);
 
         List<MethodAccelleration> accellerations = new ArrayList<MethodAccelleration>();
 
@@ -86,7 +85,10 @@ class MethodAccelleration {
                                         .isEmpty()) {
                                     throw new IllegalStateException("Acceleration is not an advice class: " + typeDescription);
                                 }
-                                accellerations.add(new MethodAccelleration(typeDescription, classFileLocator, classLoader));
+                                accellerations.add(new MethodAccelleration(typeDescription.getName(),
+                                        typeDescription.getDeclaredAnnotations().ofType(Acceleration.class),
+                                        classFileLocator,
+                                        classLoader));
                             }
                         } else {
                             System.out.println("Could not resolve: " + classFile);
@@ -103,30 +105,25 @@ class MethodAccelleration {
         return accellerations;
     }
 
-    private final TypeDescription typeDescription;
+    private final String target;
+
+    private final AnnotationDescription.Loadable<Acceleration> annotation;
 
     private final ClassFileLocator classFileLocator;
 
     private final ClassLoader classLoader;
 
-    private MethodAccelleration(TypeDescription typeDescription, ClassFileLocator classFileLocator, ClassLoader classLoader) {
-        this.typeDescription = typeDescription;
+    private MethodAccelleration(String target,
+                                AnnotationDescription.Loadable<Acceleration> annotation,
+                                ClassFileLocator classFileLocator,
+                                ClassLoader classLoader) {
+        this.target = target;
+        this.annotation = annotation;
         this.classFileLocator = classFileLocator;
         this.classLoader = classLoader;
     }
 
-    Advice advice(boolean devMode) {
-        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
-        Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, devMode);
-        if (annotation.getValue(SIMPLE_ENTRY).resolve(Boolean.class)) {
-            return advice.to(new TypeDescription.ForLoadedType(TrivialEnterAdvice.class), typeDescription, classFileLocator);
-        } else {
-            return advice.to(typeDescription, classFileLocator);
-        }
-    }
-
     AgentBuilder.RawMatcher type(boolean noExpectedName) {
-        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(is(annotation.getValue(TYPE).resolve(TypeDescription.class)));
         String[] expectedNames = annotation.getValue(EXPECTED_NAMES).resolve(String[].class);
         if (noExpectedName && expectedNames.length == 0) {
@@ -136,14 +133,24 @@ class MethodAccelleration {
         }
     }
 
+    boolean isTrivialEnter() {
+        return annotation.getValue(SIMPLE_ENTRY).resolve(Boolean.class);
+    }
+
     ElementMatcher<MethodDescription> method() {
-        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         return named(annotation.getValue(METHOD).resolve(String.class)).and(takesArguments(annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)));
+    }
+
+    String target() {
+        return target;
+    }
+
+    ClassFileLocator classFileLocator() {
+        return classFileLocator;
     }
 
     Binaries binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassLoader userLoader) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
-        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         List<Runnable> destructions = new ArrayList<Runnable>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
             String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
@@ -193,7 +200,6 @@ class MethodAccelleration {
 
     Map<TypeDescription, byte[]> inlined() {
         Map<TypeDescription, byte[]> inlined = new HashMap<TypeDescription, byte[]>();
-        AnnotationDescription annotation = typeDescription.getDeclaredAnnotations().ofType(Acceleration.class);
         try {
             for (TypeDescription inline : annotation.getValue(INLINE).resolve(TypeDescription[].class)) {
                 inlined.put(inline, classFileLocator.locate(inline.getName()).resolve());

@@ -1,11 +1,12 @@
 package com.inaos.iamj.agent;
 
+import com.inaos.iamj.api.DevMode;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
+import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
-import net.bytebuddy.dynamic.loading.ClassInjector;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.utility.JavaModule;
 
@@ -159,6 +160,14 @@ public class InaosAgent {
 
             final ClassLoadingStrategy<ClassLoader> classLoadingStrategy = ClassLoadingStrategy.Default.INJECTION.allowExistingTypes();
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
+                AgentBuilder.Transformer.ForAdvice adviceTransformer = new AgentBuilder.Transformer.ForAdvice(Advice.withCustomMapping()
+                        .bind(DevMode.class, isDevMode))
+                        .include(accelleration.classFileLocator());
+                if (accelleration.isTrivialEnter()) {
+                    adviceTransformer = adviceTransformer.advice(accelleration.method(), TrivialEnterAdvice.class.getName(), accelleration.target());
+                } else {
+                    adviceTransformer = adviceTransformer.advice(accelleration.method(), accelleration.target());
+                }
                 agentBuilder = agentBuilder.type(accelleration.type(!isExpectedName)).transform(new AgentBuilder.Transformer() {
                     @Override
                     public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
@@ -177,9 +186,9 @@ public class InaosAgent {
                             classLoadingStrategy.load(classLoader, accelleration.inlined());
                             destructions.addAll(binaries.destructions);
                         }
-                        return builder.visit(accelleration.advice(isDevMode).on(accelleration.method()));
+                        return builder;
                     }
-                }).asDecorator();
+                }).transform(adviceTransformer).asDecorator();
             }
 
             return agentBuilder.installOn(instrumentation);
