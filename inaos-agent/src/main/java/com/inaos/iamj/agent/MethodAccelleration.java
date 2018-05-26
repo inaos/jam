@@ -173,6 +173,9 @@ class MethodAccelleration {
                 throw new IllegalStateException(e);
             }
             TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
+            ClassFileLocator compoundLocator = new ClassFileLocator.Compound(classFileLocator, ClassFileLocator.ForClassLoader.of(userLoader));
+            dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
+
             Implementation initialization = StubMethod.INSTANCE;
             for (MethodDescription initMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Init.class))) {
                 if (!initMethod.isStatic() || !initMethod.getParameters().isEmpty() || !initMethod.getReturnType().represents(void.class)) {
@@ -190,7 +193,7 @@ class MethodAccelleration {
             if (!destructionMethods.isEmpty()) {
                 destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
             }
-            types.add(byteBuddy.redefine(dispatcher, classFileLocator)
+            types.add(byteBuddy.redefine(dispatcher, compoundLocator)
                     .invokable(isTypeInitializer())
                     .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()).andThen(initialization))
                     .make());
