@@ -57,10 +57,7 @@ public class TestRunner {
         List<String> command = new ArrayList<String>();
         command.add(System.getProperty("java.home") + "/bin/java");
         command.add("-cp");
-        command.add(System.getProperty("java.class.path")
-                .replace("/home/rafael/workspace/inaos/iamj/inaos-example-lib/target/classes:", "")
-                .replace("/home/rafael/workspace/inaos/iamj/inaos-boot/target/classes:", "")
-                .replace("/home/rafael/workspace/inaos/iamj/inaos-api/target/classes:", ""));
+        command.add(System.getProperty("java.class.path"));
         command.add("-javaagent:" + agent.getAbsolutePath()
                 + "="
                 + "library=" + libraryUri
