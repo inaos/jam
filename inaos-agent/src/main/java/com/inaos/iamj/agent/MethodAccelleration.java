@@ -124,9 +124,11 @@ class MethodAccelleration {
     }
 
     AgentBuilder.RawMatcher type(boolean noExpectedName) {
-        AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(is(annotation.getValue(TYPE).resolve(TypeDescription.class)));
+        AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(named(annotation.getValue(TYPE)
+                .resolve(TypeDescription.class)
+                .getName()));
         String[] expectedNames = annotation.getValue(EXPECTED_NAMES).resolve(String[].class);
-        if (noExpectedName && expectedNames.length == 0) {
+        if (noExpectedName || expectedNames.length == 0) {
             return matcher;
         } else {
             return new CodeSourceMatcher(matcher, Arrays.asList(expectedNames));
@@ -138,7 +140,15 @@ class MethodAccelleration {
     }
 
     ElementMatcher<MethodDescription> method() {
-        return named(annotation.getValue(METHOD).resolve(String.class)).and(takesArguments(annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)));
+        TypeDescription[] arguments = annotation.getValue(PARAMETERS).resolve(TypeDescription[].class);
+        ElementMatcher.Junction<MethodDescription> types = any();
+        int index = 0;
+        for (TypeDescription argument : arguments) {
+            types = types.and(takesArgument(index++, named(argument.getName())));
+        }
+        return named(annotation.getValue(METHOD).resolve(String.class))
+                .and(takesArguments(arguments.length))
+                .and(types);
     }
 
     String target() {
