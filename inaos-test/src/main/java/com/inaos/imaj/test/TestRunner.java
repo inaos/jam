@@ -55,7 +55,10 @@ public class TestRunner {
         }
 
         List<String> command = new ArrayList<String>();
-        command.add(System.getProperty("java.home") + "/bin/java");
+
+        boolean windows = System.getProperty("os.name").toLowerCase().contains("win");
+
+        command.add(System.getProperty("java.home") + (windows ? "\\bin\\java.exe": "/bin/java"));
         command.add("-cp");
         command.add(System.getProperty("java.class.path"));
         command.add("-javaagent:" + agent.getAbsolutePath()
