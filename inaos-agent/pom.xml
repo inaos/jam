@@ -55,7 +55,8 @@
                         <configuration>
                             <target name="Copying boot jar file">
                                 <copy file="${project.basedir}/../inaos-boot/target/inaos-boot-${project.version}.jar"
-                                      tofile="${project.basedir}/src/main/resources/inaos-boot.jar"/>
+                                      tofile="${project.basedir}/src/main/resources/inaos-boot.jar"
+                                      overwrite="true"/>
                             </target>
                         </configuration>
                     </execution>

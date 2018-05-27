@@ -43,9 +43,10 @@
                             <goal>run</goal>
                         </goals>
                         <configuration>
-                            <tasks>
+                            <tasks name="Copying agent jar">
                                 <copy file="../inaos-agent/target/inaos-agent-${project.version}-shaded.jar"
-                                      tofile="./src/main/resources/inaos-agent.jar"/>
+                                      tofile="./src/main/resources/inaos-agent.jar"
+                                      overwrite="true" />
                             </tasks>
                         </configuration>
                     </execution>
