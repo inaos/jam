@@ -38,7 +38,7 @@ public class TestRunner {
         }
         File agent;
         try {
-            agent = File.createTempFile("instana-agent", ".jar");
+            agent = File.createTempFile("inaos-agent", ".jar");
             agent.deleteOnExit();
             OutputStream out = new FileOutputStream(agent);
             try {
