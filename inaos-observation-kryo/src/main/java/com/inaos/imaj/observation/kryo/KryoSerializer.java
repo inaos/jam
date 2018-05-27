@@ -28,7 +28,7 @@ public class KryoSerializer {
         String[] serializedTypes = {type.getName()};
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         Output out = new Output(bytes);
-        kryo.writeObject(out, 1);
+        kryo.writeClassAndObject(out, 1);
         kryo.writeClassAndObject(out, argument);
         out.close();
         return new SerializedValue(serializedTypes, bytes.toByteArray());
