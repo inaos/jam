@@ -36,9 +36,9 @@ public class InaosAgent {
 
     private static final boolean IS_OS_WINDOWS = isOsMatchesName(OS_NAME_WINDOWS_PREFIX);
 
-    private static final boolean IS_OS_ARCH_64 = OS_ARCH.equals("amd64");
+    private static final boolean IS_OS_ARCH_64 = "amd64".equals(OS_ARCH);
 
-    private static final boolean IS_OS_ARCH_32 = OS_ARCH.equals("x86");
+    private static final boolean IS_OS_ARCH_32 = "x86".equals(OS_ARCH);
 
     private static final String NATIVE_SHARED_OBJ_EXT;
 
@@ -59,7 +59,8 @@ public class InaosAgent {
             } else if (IS_OS_ARCH_32) {
                 NATIVE_SHARED_OBJ_FOLDER = "linux-i368";
             } else {
-                throw new InaosAgentException("Operating System Architecture not supported: " + OS_ARCH);
+                NATIVE_SHARED_OBJ_FOLDER = null;
+                System.err.println("Operating System Architecture not supported: " + OS_ARCH);
             }
         } else if (IS_OS_WINDOWS) {
             NATIVE_SHARED_OBJ_EXT = "dll";
@@ -69,10 +70,14 @@ public class InaosAgent {
             } else if (IS_OS_ARCH_32) {
                 NATIVE_SHARED_OBJ_FOLDER = "win32-x86";
             } else {
-                throw new InaosAgentException("Operating System Architecture not supported: " + OS_ARCH);
+                NATIVE_SHARED_OBJ_FOLDER = null;
+                System.err.println("Operating System Architecture not supported: " + OS_ARCH);
             }
         } else {
-            throw new InaosAgentException("Operating System not supported: " + OS_NAME);
+            NATIVE_SHARED_OBJ_EXT = null;
+            NATIVE_SHARED_OBJ_PREFIX = null;
+            NATIVE_SHARED_OBJ_FOLDER = null;
+            System.err.println("Operating System not supported: " + OS_NAME);
         }
     }
 
@@ -85,6 +90,9 @@ public class InaosAgent {
     }
 
     public static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
+        if (NATIVE_SHARED_OBJ_EXT == null || NATIVE_SHARED_OBJ_PREFIX == null || NATIVE_SHARED_OBJ_FOLDER == null) {
+            return null;
+        }
         try {
             Boolean devMode = null;
             Boolean expectedName = null;
