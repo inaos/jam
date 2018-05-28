@@ -3,24 +3,24 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>inaos</groupId>
-    <artifactId>inaos-parent</artifactId>
+    <groupId>com.inaos.jam</groupId>
+    <artifactId>jam-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
 
     <modules>
-        <module>inaos-api</module>
-        <module>inaos-boot</module>
-        <module>inaos-observation</module>
-        <module>inaos-agent</module>
-        <module>inaos-attach</module>
-        <module>inaos-utility</module>
-        <module>inaos-test</module>
-        <module>inaos-example-lib</module>
-        <module>inaos-example-app</module>
-        <module>inaos-example-utility</module>
-        <module>inaos-example-bench</module>
-        <module>inaos-example-test</module>
-        <module>inaos-observation-kryo</module>
+        <module>jam-api</module>
+        <module>jam-boot</module>
+        <module>jam-observation</module>
+        <module>jam-agent</module>
+        <module>jam-attach</module>
+        <module>jam-utility</module>
+        <module>jam-test</module>
+        <module>jam-example-lib</module>
+        <module>jam-example-app</module>
+        <module>jam-example-utility</module>
+        <module>jam-example-bench</module>
+        <module>jam-example-test</module>
+        <module>jam-observation-kryo</module>
     </modules>
 
     <packaging>pom</packaging>
