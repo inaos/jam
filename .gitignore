@@ -31,8 +31,11 @@ hs_err_pid*
 .project
 
 # Maven
+target/**
 */target/**
 
 # shared-objects and DLL'
 *.so
 *.dll
+
+
