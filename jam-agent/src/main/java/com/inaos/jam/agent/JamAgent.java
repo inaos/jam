@@ -100,7 +100,7 @@ public class JamAgent {
             URL url = null;
             File sample = null;
 
-            InputStream bootJar = JamAgent.class.getResourceAsStream("/inaos-boot.jar");
+            InputStream bootJar = JamAgent.class.getResourceAsStream("/jam-boot.jar");
             if (bootJar == null) {
                 throw new IllegalStateException("Boot jar not found");
             }
@@ -211,15 +211,15 @@ public class JamAgent {
     private static void registerDispatcher(File sample) throws Exception {
         Object which;
         if (sample == null) {
-            which = Class.forName("com.inaos.iamj.agent.DispatcherToConsole")
+            which = Class.forName("com.inaos.jam.agent.DispatcherToConsole")
                     .getConstructor()
                     .newInstance();
         } else {
-            which = Class.forName("com.inaos.iamj.agent.DispatcherToFile")
+            which = Class.forName("com.inaos.jam.agent.DispatcherToFile")
                     .getConstructor(File.class, long.class, long.class)
                     .newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
         }
-        Class<?> dispatcher = Class.forName("com.inaos.iamj.boot.InaosAgentDispatcher");
+        Class<?> dispatcher = Class.forName("com.inaos.jam.boot.JamAgentDispatcher");
         Field instance = dispatcher.getField("dispatcher");
         instance.set(null, which);
     }

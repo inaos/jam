@@ -34,7 +34,7 @@ public class DispatcherGeneratorTest {
 //                null,
 //                SerializedValue.make(kryo, int.class, 42));
 //
-//        File test = File.createTempFile("iamj", ".tmp");
+//        File test = File.createTempFile("jam", ".tmp");
 //        File folder = new File(test.getParentFile(), "test_target_" + new Random().nextInt());
 //        if (!folder.mkdir()) {
 //            throw new AssertionError();
