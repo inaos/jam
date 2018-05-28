@@ -48,7 +48,7 @@ public class TestRunner {
     }
 
     public void run(Class<?> main) throws IOException {
-        InputStream in = TestRunner.class.getResourceAsStream("/jar-agent.jar");
+        InputStream in = TestRunner.class.getResourceAsStream("/jam-agent.jar");
         if (in == null) {
             throw new IllegalStateException("Agent jar was not created");
         }
