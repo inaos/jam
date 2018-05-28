@@ -15,11 +15,6 @@
         <module>jam-attach</module>
         <module>jam-utility</module>
         <module>jam-test</module>
-        <module>jam-example-lib</module>
-        <module>jam-example-app</module>
-        <module>jam-example-utility</module>
-        <module>jam-example-bench</module>
-        <module>jam-example-test</module>
         <module>jam-observation-kryo</module>
     </modules>
 
