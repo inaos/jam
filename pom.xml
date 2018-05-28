@@ -6,6 +6,32 @@
     <groupId>com.inaos.jam</groupId>
     <artifactId>jam-parent</artifactId>
     <version>1.0.0-SNAPSHOT</version>
+    
+    <licenses>
+  		<license>
+    		<name>The Apache License, Version 2.0</name>
+    		<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+  		</license>
+  		<license>
+  			<name>GNU Affero General Public License version 3</name>
+  			<url>https://opensource.org/licenses/AGPL-3.0</url>
+  		</license>
+	</licenses>
+
+	<developers>
+    	<developer>
+      		<name>INAOS</name>
+      		<email>admin@inaos.ch</email>
+      		<organization>INAOS GmbH</organization>
+      		<organizationUrl>http://www.inaos.com</organizationUrl>
+    	</developer>
+  	</developers>
+
+	<scm>
+  		<connection>scm:git:git://github.com/inaos/jam.git</connection>
+  		<developerConnection>scm:git:ssh://github.com:inaos/jam.git</developerConnection>
+  		<url>https://github.com/inaos/jam/tree/master</url>
+	</scm>
 
     <modules>
         <module>jam-api</module>
