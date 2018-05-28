@@ -7,6 +7,10 @@
 	<artifactId>jam-parent</artifactId>
 	<version>1.0.0</version>
 
+	<name>JAM</name>
+	<description>Java Acceleration Modules</description>
+	<url>https://github.com/inaos/jam</url>
+
 	<licenses>
 		<license>
 			<name>The Apache License, Version 2.0</name>
