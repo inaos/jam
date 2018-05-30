@@ -97,6 +97,7 @@ public class JamAgent {
         try {
             Boolean devMode = null;
             Boolean expectedName = null;
+			Boolean debugMode = null;
             URL url = null;
             File sample = null;
 
@@ -135,7 +136,9 @@ public class JamAgent {
                     url = new URL(pair[1]);
                 } else if (pair[0].equals("sample")) {
                     sample = new File(pair[1]);
-                } else {
+				} else if (pair[0].equals("debugMode")) {
+					debugMode = Boolean.parseBoolean(pair[1]);
+  			    } else {
                     throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
                 }
             }
@@ -149,11 +152,20 @@ public class JamAgent {
                 registerDispatcher(sample);
             }
             final boolean isExpectedName = expectedName == null ? true : expectedName;
+			final boolean isDebugMode = debugMode == null ? false : debugMode;
 
-            AgentBuilder agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
-                    //.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
+			AgentBuilder agentBuilder = null;
+			if (isDebugMode) {
+			    agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
+                    .with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
+			}
+			else {
+				agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
+                    .with(redefinitionStrategy)
+                    .disableClassFormatChanges();
+			}
 
             final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
             if (!isDevMode) {
