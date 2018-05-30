@@ -31,6 +31,8 @@ public class TestRunner {
     private boolean devMode;
 
     private File sample;
+	
+	private boolean debugMode;
 
     public TestRunner(String libraryUri) {
         this.libraryUri = libraryUri;
@@ -46,6 +48,11 @@ public class TestRunner {
         this.sample = sample;
         return this;
     }
+	
+	public TestRunner debugMode() {
+		debugMode = true;
+		return this;
+	}
 
     public void run(Class<?> main) throws IOException {
         InputStream in = TestRunner.class.getResourceAsStream("/jam-agent.jar");
@@ -80,6 +87,7 @@ public class TestRunner {
         command.add("-javaagent:" + agent.getAbsolutePath()
                 + "="
                 + "library=" + libraryUri
+				+ ",debugMode=" + debugMode
                 + ",devMode=" + devMode
                 + (sample != null ? ",sample=" + sample.getAbsolutePath() : ""));
         command.add(TestMain.class.getName());
