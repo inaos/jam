@@ -163,7 +163,7 @@ class MethodAccelleration {
         ElementMatcher.Junction<MethodDescription> types = any();
         int index = 0;
         for (TypeDescription argument : arguments) {
-            types = types.and(takesArgument(index++, named(argument.getName())));
+            types = types.and(takesArgument(index++, named(argument.getActualName())));
         }
         return named(annotation.getValue(METHOD).resolve(String.class))
                 .and(takesArguments(arguments.length))
