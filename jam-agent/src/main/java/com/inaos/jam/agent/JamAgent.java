@@ -7,6 +7,7 @@ import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.dynamic.scaffold.MethodGraph;
 import net.bytebuddy.utility.JavaModule;
 
 import java.io.File;
@@ -24,8 +25,6 @@ import java.util.jar.JarFile;
 import com.inaos.jam.api.DevMode;
 
 public class JamAgent {
-
-    private static final ByteBuddy BYTE_BUDDY = new ByteBuddy();
 
     private static final String OS_NAME = getSystemProperty("os.name");
 
@@ -154,17 +153,13 @@ public class JamAgent {
             final boolean isExpectedName = expectedName == null ? true : expectedName;
 			final boolean isDebugMode = debugMode == null ? false : debugMode;
 
-			AgentBuilder agentBuilder = null;
+			final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
+
+			AgentBuilder agentBuilder = new AgentBuilder.Default(byteBuddy)
+                    .with(redefinitionStrategy)
+                    .disableClassFormatChanges();
 			if (isDebugMode) {
-			    agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
-                    .with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly())
-                    .with(redefinitionStrategy)
-                    .disableClassFormatChanges();
-			}
-			else {
-				agentBuilder = new AgentBuilder.Default(BYTE_BUDDY)
-                    .with(redefinitionStrategy)
-                    .disableClassFormatChanges();
+			    agentBuilder = agentBuilder.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly());
 			}
 
             final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
@@ -195,7 +190,7 @@ public class JamAgent {
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
-                        MethodAccelleration.Binaries binaries = accelleration.binaries(BYTE_BUDDY,
+                        MethodAccelleration.Binaries binaries = accelleration.binaries(byteBuddy,
                                 NATIVE_SHARED_OBJ_FOLDER,
                                 NATIVE_SHARED_OBJ_PREFIX,
                                 NATIVE_SHARED_OBJ_EXT,
@@ -210,8 +205,10 @@ public class JamAgent {
                         return builder;
                     }
                 }).transform(adviceTransformer).asDecorator();
+             if (isDebugMode) {
+                 System.out.println("Registered accelleration: " + accelleration);
+             }
             }
-
             return agentBuilder.installOn(instrumentation);
         } catch (Exception e) {
             e.printStackTrace();

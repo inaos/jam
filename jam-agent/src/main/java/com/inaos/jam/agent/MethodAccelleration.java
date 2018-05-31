@@ -29,6 +29,7 @@ import net.bytebuddy.implementation.Implementation;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.StubMethod;
 import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
@@ -166,7 +167,8 @@ class MethodAccelleration {
         }
         return named(annotation.getValue(METHOD).resolve(String.class))
                 .and(takesArguments(arguments.length))
-                .and(types);
+                .and(types)
+                .and(not(isBridge()));
     }
 
     String target() {
@@ -239,6 +241,26 @@ class MethodAccelleration {
             throw new RuntimeException(e);
         }
         return inlined;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(target).append(" @ (");
+        sb.append("type=").append(annotation.getValue(TYPE).resolve(TypeDescription.class).getName());
+        sb.append(", method=").append(annotation.getValue(METHOD).resolve(String.class));
+        sb.append(", parameters=[");
+        boolean first = true;
+        for (TypeDescription parameter : annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(",");
+            }
+            sb.append(parameter.getName());
+        }
+        sb.append("]");
+        return sb.append(")").toString();
     }
 
     static class Binaries {

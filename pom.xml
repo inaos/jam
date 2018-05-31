@@ -54,7 +54,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.target>1.6</maven.compiler.target>
 		<maven.compiler.source>1.6</maven.compiler.source>
-		<bytebuddy.version>1.8.10</bytebuddy.version>
+		<bytebuddy.version>1.8.12</bytebuddy.version>
 		<kryo.version>4.0.0</kryo.version>
 		<jmh.version>1.20</jmh.version>
 		<junit.version>4.12</junit.version>
