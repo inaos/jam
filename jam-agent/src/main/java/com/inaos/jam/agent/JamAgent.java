@@ -190,6 +190,9 @@ public class JamAgent {
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
+                        if (isDebugMode) {
+                            System.out.println("Applying " + accelleration.target() + " onto " + typeDescription);
+                        }
                         MethodAccelleration.Binaries binaries = accelleration.binaries(byteBuddy,
                                 NATIVE_SHARED_OBJ_FOLDER,
                                 NATIVE_SHARED_OBJ_PREFIX,
