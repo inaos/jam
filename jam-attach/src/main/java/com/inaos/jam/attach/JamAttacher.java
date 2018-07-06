@@ -18,18 +18,45 @@ package com.inaos.jam.attach;
 
 import net.bytebuddy.agent.ByteBuddyAgent;
 
-import java.io.File;
+import java.io.*;
 
 public class JamAttacher {
 
     public static void main(String[] args) {
-        if (args.length < 2) {
-            throw new IllegalArgumentException("Expected an agent jar as a first argument and at least one process id");
+        if (args.length == 0) {
+            throw new IllegalArgumentException("Must specify at least one argument in form [process info]");
+        } else if (args.length % 2 != 0) {
+            throw new IllegalArgumentException("Must specify arguments in form [process info]");
         }
 
-        File agent = new File(args[0]);
-        for (int index = 1; index < args.length; index++) {
-            ByteBuddyAgent.attach(agent, args[index]);
+        InputStream agentJar = JamAttacher.class.getResourceAsStream("/jam-agent.jar");
+        if (agentJar == null) {
+            throw new IllegalStateException("Agent jar not found");
+        }
+        File materializedAgentJar;
+        try {
+            try {
+                materializedAgentJar = File.createTempFile("inaos-agent", ".jar");
+                OutputStream out = new FileOutputStream(materializedAgentJar);
+                try {
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = agentJar.read(buffer)) != -1) {
+                        out.write(buffer, 0, length);
+                    }
+                } finally {
+                    out.close();
+                }
+            } finally {
+                agentJar.close();
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+
+        for (int index = 0; index < args.length / 2; index += 2) {
+            System.out.println("Attaching to process " + args[index] + " with arguments '" + args[index + 1] + "'");
+            ByteBuddyAgent.attach(materializedAgentJar, args[index], args[index + 1]);
         }
     }
 }
