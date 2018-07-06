@@ -29,6 +29,11 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>com.inaos.jam</groupId>
+            <artifactId>jam-tool</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.esotericsoftware</groupId>
             <artifactId>kryo</artifactId>
             <version>${kryo.version}</version>

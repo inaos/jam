@@ -1,5 +1,23 @@
+/*
+ * Copyright (C) 2018 INAOS GmbH
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
 package com.inaos.jam.agent;
 
+import com.inaos.jam.tool.Platform;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
@@ -26,60 +44,9 @@ import com.inaos.jam.api.DevMode;
 
 public class JamAgent {
 
-    private static final String OS_NAME = getSystemProperty("os.name");
-
-    private static final String OS_ARCH = getSystemProperty("os.arch");
-
-    private static final String OS_NAME_WINDOWS_PREFIX = "Windows";
-
-    private static final boolean IS_OS_LINUX = isOsMatchesName("Linux") || isOsMatchesName("LINUX");
-
-    private static final boolean IS_OS_WINDOWS = isOsMatchesName(OS_NAME_WINDOWS_PREFIX);
-
-    private static final boolean IS_OS_ARCH_64 = "amd64".equals(OS_ARCH);
-
-    private static final boolean IS_OS_ARCH_32 = "x86".equals(OS_ARCH);
-
-    private static final String NATIVE_SHARED_OBJ_EXT;
-
-    private static final String NATIVE_SHARED_OBJ_PREFIX;
-
-    private static final String NATIVE_SHARED_OBJ_FOLDER;
-
     private static final long MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
 
     private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024 * 1024; // 1 MB
-
-    static {
-        if (IS_OS_LINUX) {
-            NATIVE_SHARED_OBJ_EXT = "so";
-            NATIVE_SHARED_OBJ_PREFIX = "lib";
-            if (IS_OS_ARCH_64) {
-                NATIVE_SHARED_OBJ_FOLDER = "linux-amd64";
-            } else if (IS_OS_ARCH_32) {
-                NATIVE_SHARED_OBJ_FOLDER = "linux-i368";
-            } else {
-                NATIVE_SHARED_OBJ_FOLDER = null;
-                System.err.println("Operating System Architecture not supported: " + OS_ARCH);
-            }
-        } else if (IS_OS_WINDOWS) {
-            NATIVE_SHARED_OBJ_EXT = "dll";
-            NATIVE_SHARED_OBJ_PREFIX = "";
-            if (IS_OS_ARCH_64) {
-                NATIVE_SHARED_OBJ_FOLDER = "win32-amd64";
-            } else if (IS_OS_ARCH_32) {
-                NATIVE_SHARED_OBJ_FOLDER = "win32-x86";
-            } else {
-                NATIVE_SHARED_OBJ_FOLDER = null;
-                System.err.println("Operating System Architecture not supported: " + OS_ARCH);
-            }
-        } else {
-            NATIVE_SHARED_OBJ_EXT = null;
-            NATIVE_SHARED_OBJ_PREFIX = null;
-            NATIVE_SHARED_OBJ_FOLDER = null;
-            System.err.println("Operating System not supported: " + OS_NAME);
-        }
-    }
 
     public static void premain(String argument, Instrumentation instrumentation) {
         install(argument, instrumentation, AgentBuilder.RedefinitionStrategy.DISABLED);
@@ -90,7 +57,7 @@ public class JamAgent {
     }
 
     public static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
-        if (NATIVE_SHARED_OBJ_EXT == null || NATIVE_SHARED_OBJ_PREFIX == null || NATIVE_SHARED_OBJ_FOLDER == null) {
+        if (Platform.NATIVE_SHARED_OBJ_EXT == null || Platform.NATIVE_SHARED_OBJ_PREFIX == null || Platform.NATIVE_SHARED_OBJ_FOLDER == null) {
             return null;
         }
         try {
@@ -194,9 +161,9 @@ public class JamAgent {
                             System.out.println("Applying " + accelleration.target() + " onto " + typeDescription);
                         }
                         MethodAccelleration.Binaries binaries = accelleration.binaries(byteBuddy,
-                                NATIVE_SHARED_OBJ_FOLDER,
-                                NATIVE_SHARED_OBJ_PREFIX,
-                                NATIVE_SHARED_OBJ_EXT,
+                                Platform.NATIVE_SHARED_OBJ_FOLDER,
+                                Platform.NATIVE_SHARED_OBJ_PREFIX,
+                                Platform.NATIVE_SHARED_OBJ_EXT,
                                 classLoader);
                         for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, classLoadingStrategy);
@@ -236,24 +203,4 @@ public class JamAgent {
         instance.set(null, which);
     }
 
-    private static boolean isOsMatchesName(String osNamePrefix) {
-        return isOSNameMatch(OS_NAME, osNamePrefix);
-    }
-
-    private static boolean isOSNameMatch(String osName, String osNamePrefix) {
-        if (osName == null) {
-            return false;
-        }
-        return osName.startsWith(osNamePrefix);
-    }
-
-    private static String getSystemProperty(String property) {
-        try {
-            return System.getProperty(property);
-        } catch (SecurityException ex) {
-            // we are not allowed to look at this property
-            System.err.println("Caught a SecurityException reading the system property '" + property + "'; the SystemUtils property value will default to null.");
-            return null;
-        }
-    }
 }
