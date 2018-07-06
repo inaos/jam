@@ -46,6 +46,7 @@
 		<module>jam-utility</module>
 		<module>jam-test</module>
 		<module>jam-observation-kryo</module>
+		<module>jam-tool</module>
 	</modules>
 
 	<packaging>pom</packaging>
