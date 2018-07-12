@@ -22,8 +22,12 @@ public class NativeLibrary {
 
     public static void loadLibrary(final String libraryName, ClassLoader classLoader) {
         final String resource = Platform.NATIVE_SHARED_OBJ_FOLDER + "/" + Platform.NATIVE_SHARED_OBJ_PREFIX + libraryName;
-        InputStream in = classLoader.getResourceAsStream(resource + "." + Platform.NATIVE_SHARED_OBJ_EXT);
+        final String fullPath = resource + "." + Platform.NATIVE_SHARED_OBJ_EXT;
+        InputStream in = classLoader.getResourceAsStream(fullPath);
         File file;
+        if (in == null) {
+            throw new IllegalArgumentException("Could not find shared-object in classpath: "+fullPath);
+        }
         try {
             file = File.createTempFile(resource, "." + Platform.NATIVE_SHARED_OBJ_EXT);
             OutputStream out = new FileOutputStream(file);
