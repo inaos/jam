@@ -264,6 +264,7 @@ class MethodAccelleration {
                 new ClassReader(in).accept(new ClassVisitor(Opcodes.ASM6) {
                     @Override
                     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                        // TODO: Needs descriptior check!
                         if (name.equals(annotation.getValue(METHOD).resolve(String.class))) {
                             return new CheckSumVisitor() {
                                 @Override
