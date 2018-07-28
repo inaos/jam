@@ -54,7 +54,7 @@ class MethodAccelleration {
             PARAMETERS,
             LIBRARIES,
             CHECKSUM,
-            IGNORE_IN_PRODUCTION,
+            APPLICATION,
             SIMPLE_ENTRY,
             DISPATCHER,
             BINARY,
@@ -69,7 +69,7 @@ class MethodAccelleration {
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
         CHECKSUM = accelleration.getDeclaredMethods().filter(named("checksum")).getOnly();
-        IGNORE_IN_PRODUCTION = accelleration.getDeclaredMethods().filter(named("ignoreInProduction")).getOnly();
+        APPLICATION = accelleration.getDeclaredMethods().filter(named("application")).getOnly();
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
         EXPECTED_NAMES = accelleration.getDeclaredMethods().filter(named("expectedNames")).getOnly();
@@ -166,7 +166,7 @@ class MethodAccelleration {
     }
 
     boolean isActive(boolean devMode) {
-        String value = annotation.getValue(IGNORE_IN_PRODUCTION).resolve(EnumerationDescription.class).getValue();
+        String value = annotation.getValue(APPLICATION).resolve(EnumerationDescription.class).getValue();
         if (value.equals(Acceleration.Application.DEVELOPMENT.name())) {
             return devMode;
         } else if (value.equals(Acceleration.Application.PRODUCTION.name())) {
@@ -275,11 +275,17 @@ class MethodAccelleration {
         final String[] computed = new String[1];
         try {
             try {
+                final StringBuilder sb = new StringBuilder().append("(");
+                for (TypeDescription typeDescription : annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)) {
+                    sb.append(typeDescription.getDescriptor());
+                }
+                sb.append(")");
                 new ClassReader(in).accept(new ClassVisitor(Opcodes.ASM6) {
                     @Override
                     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-                        // TODO: Needs descriptior check!
-                        if (name.equals(annotation.getValue(METHOD).resolve(String.class))) {
+                        if ((access & Opcodes.ACC_BRIDGE) == 0
+                                && name.equals(annotation.getValue(METHOD).resolve(String.class))
+                                && sb.toString().equals(desc)) {
                             return new CheckSumVisitor() {
                                 @Override
                                 void onChecksum(String checksum) {
