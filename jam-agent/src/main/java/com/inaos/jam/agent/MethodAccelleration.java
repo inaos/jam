@@ -35,6 +35,7 @@ import net.bytebuddy.jar.asm.ClassVisitor;
 import net.bytebuddy.jar.asm.MethodVisitor;
 import net.bytebuddy.jar.asm.Opcodes;
 import net.bytebuddy.matcher.ElementMatcher;
+import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
@@ -60,7 +61,10 @@ class MethodAccelleration {
             BINARY,
             SYSTEM_LOAD,
             INLINE,
-            EXPECTED_NAMES;
+            EXPECTED_NAMES,
+            CAPTURE,
+            CAPTURE_TYPE,
+            CAPTURE_FIELDS;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -73,11 +77,15 @@ class MethodAccelleration {
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
         EXPECTED_NAMES = accelleration.getDeclaredMethods().filter(named("expectedNames")).getOnly();
+        CAPTURE = accelleration.getDeclaredMethods().filter(named("capture")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
         TypeDescription system = new TypeDescription.ForLoadedType(System.class);
         SYSTEM_LOAD = system.getDeclaredMethods().filter(named("load")).getOnly();
+        TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
+        CAPTURE_TYPE = capture.getDeclaredMethods().filter(named("type")).getOnly();
+        CAPTURE_FIELDS = capture.getDeclaredMethods().filter(named("fields")).getOnly();
     }
 
     static List<MethodAccelleration> findAll(URL url) {
@@ -249,6 +257,16 @@ class MethodAccelleration {
         return new Binaries(types, destructions);
     }
 
+    List<Capture> captures() {
+        List<Capture> captures = new ArrayList<Capture>();
+        for (AnnotationDescription library : annotation.getValue(CAPTURE).resolve(AnnotationDescription[].class)) {
+            String name = library.getValue(CAPTURE_TYPE).resolve(TypeDescription.class).getName();
+            String[] fields = library.getValue(CAPTURE_FIELDS).resolve(String[].class);
+            captures.add(new Capture(name, fields));
+        }
+        return captures;
+    }
+
     Map<TypeDescription, byte[]> inlined() {
         Map<TypeDescription, byte[]> inlined = new HashMap<TypeDescription, byte[]>();
         try {
@@ -346,6 +364,26 @@ class MethodAccelleration {
         private Binaries(List<DynamicType.Unloaded<?>> types, List<Runnable> destructions) {
             this.types = types;
             this.destructions = destructions;
+        }
+    }
+
+    static class Capture {
+
+        private final String name;
+
+        private final String[] field;
+
+        private Capture(String name, String[] field) {
+            this.name = name;
+            this.field = field;
+        }
+
+        String getName() {
+            return name;
+        }
+
+        String[] getField() {
+            return field;
         }
     }
 

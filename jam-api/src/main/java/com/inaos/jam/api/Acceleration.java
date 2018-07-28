@@ -35,6 +35,8 @@ public @interface Acceleration {
 
     Library[] libraries() default {};
 
+    Capture[] capture() default {};
+
     boolean simpleEntry() default false;
 
     Class<?>[] inline() default {};
@@ -63,6 +65,14 @@ public @interface Acceleration {
         @interface Destroy {
 
         }
+    }
+
+    @Target(value = {})
+    @interface Capture {
+
+        Class<?> type();
+
+        String[] fields();
     }
 
     enum Application {

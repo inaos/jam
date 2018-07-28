@@ -43,6 +43,11 @@
             <artifactId>kryo</artifactId>
             <version>${kryo.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.blogspot.mydailyjava</groupId>
+            <artifactId>weak-lock-free</artifactId>
+            <version>${weaklockfree.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

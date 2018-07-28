@@ -23,10 +23,12 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.asm.Advice;
+import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.MethodGraph;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.utility.JavaModule;
 
 import java.io.File;
@@ -42,6 +44,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
+
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.named;
 
 public class JamAgent {
 
@@ -118,19 +123,21 @@ public class JamAgent {
             }
 
             final boolean isDevMode = devMode == null ? false : devMode;
-            if (isDevMode) {
-                registerDispatcher(sample);
-            }
             final boolean isExpectedName = expectedName == null ? true : expectedName;
             final boolean isDebugMode = debugMode == null ? false : debugMode;
 
+            if (isDevMode) {
+                registerDispatcher(sample);
+            }
+            registerCapture();
+
             final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
 
-            AgentBuilder agentBuilder = new AgentBuilder.Default(byteBuddy)
+            AgentBuilder builder = new AgentBuilder.Default(byteBuddy)
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
             if (isDebugMode) {
-                agentBuilder = agentBuilder.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly());
+                builder = builder.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly());
             }
 
             final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
@@ -149,7 +156,7 @@ public class JamAgent {
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
                 if (filtered.contains(accelleration.target()) || !accelleration.isActive(isDevMode)) {
                     if (isDebugMode) {
-                        System.out.println(accelleration + " is not active in current mode");
+                        System.out.println(accelleration + " is filtered or not active in current mode");
                     }
                     continue;
                 }
@@ -161,7 +168,7 @@ public class JamAgent {
                 } else {
                     adviceTransformer = adviceTransformer.advice(accelleration.method(), accelleration.target());
                 }
-                agentBuilder = agentBuilder.type(accelleration.type(!isExpectedName)).transform(new AgentBuilder.Transformer() {
+                builder = builder.type(accelleration.type(!isExpectedName)).transform(new AgentBuilder.Transformer() {
                     @Override
                     public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
                                                             TypeDescription typeDescription,
@@ -188,11 +195,40 @@ public class JamAgent {
                         return builder;
                     }
                 }).transform(adviceTransformer).asDecorator();
+                for (MethodAccelleration.Capture capture : accelleration.captures()) {
+                    AgentBuilder.Identified.Extendable identified = builder.type(named(capture.getName())).transform(AgentBuilder.Transformer.NoOp.INSTANCE);
+                    for (final String field : capture.getField()) {
+                        identified = identified.transform(new AgentBuilder.Transformer() {
+                            @Override
+                            public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
+                                                                    TypeDescription typeDescription,
+                                                                    ClassLoader classLoader,
+                                                                    JavaModule module) {
+                                if (isDebugMode) {
+                                    System.out.println("Applying capture for " + field + " of " + typeDescription + " for " + accelleration);
+                                }
+                                return builder.visit(Advice.withCustomMapping()
+                                        .bind(CaptureAdvice.CapturedField.class, field)
+                                        .bind(CaptureAdvice.CapturedValue.class, new Advice.OffsetMapping() {
+                                            @Override
+                                            public Target resolve(TypeDescription instrumentedType,
+                                                                  MethodDescription instrumentedMethod,
+                                                                  Assigner assigner,
+                                                                  Advice.ArgumentHandler argumentHandler,
+                                                                  Sort sort) {
+                                                return new Target.ForField.ReadOnly(instrumentedType.getDeclaredFields().filter(named(field)).getOnly());
+                                            }
+                                        }).to(CaptureAdvice.class).on(isConstructor()));
+                            }
+                        });
+                        builder = identified.asDecorator();
+                    }
+                }
                 if (isDebugMode) {
                     System.out.println("Registered accelleration: " + accelleration);
                 }
             }
-            return agentBuilder.installOn(instrumentation);
+            return builder.installOn(instrumentation);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -216,4 +252,12 @@ public class JamAgent {
         instance.set(null, which);
     }
 
+    // Use reflection for delayed class resolution after appending to boot loader.
+    private static void registerCapture() throws Exception {
+        Class<?> dispatcher = Class.forName("com.inaos.jam.boot.JamObjectCapture");
+        Field instance = dispatcher.getField("dispatcher");
+        instance.set(null, Class.forName("com.inaos.jam.agent.WeakHashMapCapture")
+                .getConstructor()
+                .newInstance());
+    }
 }
