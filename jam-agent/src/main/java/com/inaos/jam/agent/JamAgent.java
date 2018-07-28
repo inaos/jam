@@ -38,6 +38,8 @@ import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
@@ -55,7 +57,7 @@ public class JamAgent {
         install(argument, instrumentation, AgentBuilder.RedefinitionStrategy.RETRANSFORMATION);
     }
 
-    public static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
+    private static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
         if (Platform.NATIVE_SHARED_OBJ_EXT == null || Platform.NATIVE_SHARED_OBJ_PREFIX == null || Platform.NATIVE_SHARED_OBJ_FOLDER == null) {
             return null;
         }
@@ -65,6 +67,7 @@ public class JamAgent {
             Boolean debugMode = null;
             URL url = null;
             File sample = null;
+            Set<String> filtered = new HashSet<String>();
 
             InputStream bootJar = JamAgent.class.getResourceAsStream("/jam-boot.jar");
             if (bootJar == null) {
@@ -103,6 +106,8 @@ public class JamAgent {
                     sample = new File(pair[1]);
                 } else if (pair[0].equals("debugMode")) {
                     debugMode = Boolean.parseBoolean(pair[1]);
+                } else if (pair[0].equals("filter")) {
+                    filtered.add(pair[1]);
                 } else {
                     throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
                 }
@@ -142,7 +147,7 @@ public class JamAgent {
 
             final ClassLoadingStrategy<ClassLoader> classLoadingStrategy = ClassLoadingStrategy.Default.INJECTION.allowExistingTypes();
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
-                if (!accelleration.isActive(isDevMode)) {
+                if (filtered.contains(accelleration.target()) || !accelleration.isActive(isDevMode)) {
                     if (isDebugMode) {
                         System.out.println(accelleration + " is not active in current mode");
                     }
