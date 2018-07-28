@@ -41,6 +41,8 @@ public @interface Acceleration {
 
     String[] expectedNames() default {};
 
+    String checksum() default "";
+
     @Target(value = {})
     @interface Library {
 

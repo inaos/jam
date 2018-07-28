@@ -28,10 +28,7 @@ import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.MethodGraph;
 import net.bytebuddy.utility.JavaModule;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.net.URL;
@@ -159,6 +156,9 @@ public class JamAgent {
                                                             JavaModule module) {
                         if (isDebugMode) {
                             System.out.println("Applying " + accelleration.target() + " onto " + typeDescription);
+                        }
+                        if (!accelleration.checksum(classLoader, isDebugMode) && !isDevMode) {
+                            throw new IllegalStateException("Could not apply " + accelleration + " due to hash code mismatch");
                         }
                         MethodAccelleration.Binaries binaries = accelleration.binaries(byteBuddy,
                                 Platform.NATIVE_SHARED_OBJ_FOLDER,

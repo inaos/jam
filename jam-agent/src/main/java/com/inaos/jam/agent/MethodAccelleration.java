@@ -17,6 +17,7 @@
 
 package com.inaos.jam.agent;
 
+import com.inaos.jam.api.Acceleration;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -28,8 +29,11 @@ import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.implementation.Implementation;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.StubMethod;
+import net.bytebuddy.jar.asm.ClassReader;
+import net.bytebuddy.jar.asm.ClassVisitor;
+import net.bytebuddy.jar.asm.MethodVisitor;
+import net.bytebuddy.jar.asm.Opcodes;
 import net.bytebuddy.matcher.ElementMatcher;
-import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
@@ -40,8 +44,6 @@ import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import com.inaos.jam.api.Acceleration;
-
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
 class MethodAccelleration {
@@ -50,6 +52,7 @@ class MethodAccelleration {
             METHOD,
             PARAMETERS,
             LIBRARIES,
+            CHECKSUM,
             SIMPLE_ENTRY,
             DISPATCHER,
             BINARY,
@@ -63,6 +66,7 @@ class MethodAccelleration {
         METHOD = accelleration.getDeclaredMethods().filter(named("method")).getOnly();
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
+        CHECKSUM = accelleration.getDeclaredMethods().filter(named("checksum")).getOnly();
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
         EXPECTED_NAMES = accelleration.getDeclaredMethods().filter(named("expectedNames")).getOnly();
@@ -241,6 +245,55 @@ class MethodAccelleration {
             throw new RuntimeException(e);
         }
         return inlined;
+    }
+
+    boolean checksum(ClassLoader classLoader, boolean debug) {
+        String checksum = annotation.getValue(CHECKSUM).resolve(String.class);
+        InputStream in = classLoader.getResourceAsStream(annotation.getValue(TYPE)
+                .resolve(TypeDescription.class)
+                .getInternalName() + ".class");
+        if (in == null) {
+            if (debug) {
+                System.out.println("Could not locate class file for computing checksum for: " + this);
+            }
+            return checksum.length() == 0;
+        }
+        final String[] computed = new String[1];
+        try {
+            try {
+                new ClassReader(in).accept(new ClassVisitor(Opcodes.ASM6) {
+                    @Override
+                    public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                        if (name.equals(annotation.getValue(METHOD).resolve(String.class))) {
+                            return new CheckSumVisitor() {
+                                @Override
+                                void onChecksum(String checksum) {
+                                    computed[0] = checksum;
+                                }
+                            };
+                        }
+                        return null;
+                    }
+                }, ClassReader.SKIP_DEBUG);
+            } finally {
+                in.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        if (computed[0] == null) {
+            if (debug) {
+                System.out.println("Could not compute checksum for " + this);
+            }
+            return false;
+        } else {
+            if (checksum.equals(computed[0])) {
+                return true;
+            } else if (debug) {
+                System.out.println("Checksum for " + this + " not equal: " + computed[0]);
+            }
+            return false;
+        }
     }
 
     @Override
