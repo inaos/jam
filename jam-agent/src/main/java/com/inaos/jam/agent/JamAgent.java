@@ -17,6 +17,7 @@
 
 package com.inaos.jam.agent;
 
+import com.inaos.jam.api.DevMode;
 import com.inaos.jam.tool.Platform;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -28,7 +29,10 @@ import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.MethodGraph;
 import net.bytebuddy.utility.JavaModule;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.net.URL;
@@ -36,8 +40,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
-
-import com.inaos.jam.api.DevMode;
 
 public class JamAgent {
 
@@ -60,7 +62,7 @@ public class JamAgent {
         try {
             Boolean devMode = null;
             Boolean expectedName = null;
-			Boolean debugMode = null;
+            Boolean debugMode = null;
             URL url = null;
             File sample = null;
 
@@ -99,9 +101,9 @@ public class JamAgent {
                     url = new URL(pair[1]);
                 } else if (pair[0].equals("sample")) {
                     sample = new File(pair[1]);
-				} else if (pair[0].equals("debugMode")) {
-					debugMode = Boolean.parseBoolean(pair[1]);
-  			    } else {
+                } else if (pair[0].equals("debugMode")) {
+                    debugMode = Boolean.parseBoolean(pair[1]);
+                } else {
                     throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
                 }
             }
@@ -115,16 +117,16 @@ public class JamAgent {
                 registerDispatcher(sample);
             }
             final boolean isExpectedName = expectedName == null ? true : expectedName;
-			final boolean isDebugMode = debugMode == null ? false : debugMode;
+            final boolean isDebugMode = debugMode == null ? false : debugMode;
 
-			final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
+            final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
 
-			AgentBuilder agentBuilder = new AgentBuilder.Default(byteBuddy)
+            AgentBuilder agentBuilder = new AgentBuilder.Default(byteBuddy)
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
-			if (isDebugMode) {
-			    agentBuilder = agentBuilder.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly());
-			}
+            if (isDebugMode) {
+                agentBuilder = agentBuilder.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly());
+            }
 
             final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
             if (!isDevMode) {
@@ -140,6 +142,12 @@ public class JamAgent {
 
             final ClassLoadingStrategy<ClassLoader> classLoadingStrategy = ClassLoadingStrategy.Default.INJECTION.allowExistingTypes();
             for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
+                if (!accelleration.isActive(isDevMode)) {
+                    if (isDebugMode) {
+                        System.out.println(accelleration + " is not active in current mode");
+                    }
+                    continue;
+                }
                 AgentBuilder.Transformer.ForAdvice adviceTransformer = new AgentBuilder.Transformer.ForAdvice(Advice.withCustomMapping()
                         .bind(DevMode.class, isDevMode))
                         .include(accelleration.classFileLocator());
@@ -175,9 +183,9 @@ public class JamAgent {
                         return builder;
                     }
                 }).transform(adviceTransformer).asDecorator();
-             if (isDebugMode) {
-                 System.out.println("Registered accelleration: " + accelleration);
-             }
+                if (isDebugMode) {
+                    System.out.println("Registered accelleration: " + accelleration);
+                }
             }
             return agentBuilder.installOn(instrumentation);
         } catch (Exception e) {

@@ -43,6 +43,8 @@ public @interface Acceleration {
 
     String checksum() default "";
 
+    Application application() default Application.ALL;
+
     @Target(value = {})
     @interface Library {
 
@@ -61,5 +63,9 @@ public @interface Acceleration {
         @interface Destroy {
 
         }
+    }
+
+    enum Application {
+        PRODUCTION, DEVELOPMENT, ALL
     }
 }

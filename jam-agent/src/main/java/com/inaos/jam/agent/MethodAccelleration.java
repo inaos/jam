@@ -22,6 +22,7 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.enumeration.EnumerationDescription;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.ClassFileLocator;
@@ -53,6 +54,7 @@ class MethodAccelleration {
             PARAMETERS,
             LIBRARIES,
             CHECKSUM,
+            IGNORE_IN_PRODUCTION,
             SIMPLE_ENTRY,
             DISPATCHER,
             BINARY,
@@ -67,6 +69,7 @@ class MethodAccelleration {
         PARAMETERS = accelleration.getDeclaredMethods().filter(named("parameters")).getOnly();
         LIBRARIES = accelleration.getDeclaredMethods().filter(named("libraries")).getOnly();
         CHECKSUM = accelleration.getDeclaredMethods().filter(named("checksum")).getOnly();
+        IGNORE_IN_PRODUCTION = accelleration.getDeclaredMethods().filter(named("ignoreInProduction")).getOnly();
         SIMPLE_ENTRY = accelleration.getDeclaredMethods().filter(named("simpleEntry")).getOnly();
         INLINE = accelleration.getDeclaredMethods().filter(named("inline")).getOnly();
         EXPECTED_NAMES = accelleration.getDeclaredMethods().filter(named("expectedNames")).getOnly();
@@ -160,6 +163,17 @@ class MethodAccelleration {
 
     boolean isTrivialEnter() {
         return annotation.getValue(SIMPLE_ENTRY).resolve(Boolean.class);
+    }
+
+    boolean isActive(boolean devMode) {
+        String value = annotation.getValue(IGNORE_IN_PRODUCTION).resolve(EnumerationDescription.class).getValue();
+        if (value.equals(Acceleration.Application.DEVELOPMENT.name())) {
+            return devMode;
+        } else if (value.equals(Acceleration.Application.PRODUCTION.name())) {
+            return !devMode;
+        } else {
+            return true;
+        }
     }
 
     ElementMatcher<MethodDescription> method() {
