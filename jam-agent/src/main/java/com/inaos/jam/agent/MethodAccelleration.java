@@ -262,7 +262,7 @@ class MethodAccelleration {
     }
 
     boolean checksum(ClassLoader classLoader, boolean debug) {
-        String checksum = annotation.getValue(CHECKSUM).resolve(String.class);
+        List<String> checksums = Arrays.asList(annotation.getValue(CHECKSUM).resolve(String[].class));
         InputStream in = classLoader.getResourceAsStream(annotation.getValue(TYPE)
                 .resolve(TypeDescription.class)
                 .getInternalName() + ".class");
@@ -270,7 +270,7 @@ class MethodAccelleration {
             if (debug) {
                 System.out.println("Could not locate class file for computing checksum for: " + this);
             }
-            return checksum.length() == 0;
+            return checksums.isEmpty();
         }
         final String[] computed = new String[1];
         try {
@@ -308,7 +308,7 @@ class MethodAccelleration {
             }
             return false;
         } else {
-            if (checksum.equals(computed[0])) {
+            if (checksums.contains(computed[0])) {
                 return true;
             } else if (debug) {
                 System.out.println("Checksum for " + this + " not equal: " + computed[0]);

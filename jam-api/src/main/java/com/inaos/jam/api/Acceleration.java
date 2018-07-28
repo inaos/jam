@@ -41,7 +41,7 @@ public @interface Acceleration {
 
     String[] expectedNames() default {};
 
-    String checksum() default "";
+    String[] checksum() default {};
 
     Application application() default Application.ALL;
 
