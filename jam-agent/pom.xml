@@ -109,6 +109,10 @@
                                     <pattern>org.objenesis</pattern>
                                     <shadedPattern>com.inaos.jam.objenesis</shadedPattern>
                                 </relocation>
+                                <relocation>
+                                    <pattern>com.blogspot.mydailyjava.weaklockfree</pattern>
+                                    <shadedPattern>com.inaos.jam.weaklockfree</shadedPattern>
+                                </relocation>
                             </relocations>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
