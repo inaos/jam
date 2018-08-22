@@ -70,6 +70,7 @@ public class JamAgent {
             Boolean devMode = null;
             Boolean expectedName = null;
             Boolean debugMode = null;
+            Boolean ignoreChecksum = null;
             URL url = null;
             File sample = null;
             Set<String> filtered = new HashSet<String>();
@@ -113,6 +114,8 @@ public class JamAgent {
                     debugMode = Boolean.parseBoolean(pair[1]);
                 } else if (pair[0].equals("filter")) {
                     filtered.add(pair[1]);
+                } else if (pair[0].equals("ignoreChecksum")) {
+                    ignoreChecksum = Boolean.parseBoolean(pair[1]);
                 } else {
                     throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
                 }
@@ -125,6 +128,7 @@ public class JamAgent {
             final boolean isDevMode = devMode == null ? false : devMode;
             final boolean isExpectedName = expectedName == null ? true : expectedName;
             final boolean isDebugMode = debugMode == null ? false : debugMode;
+            final boolean shouldIgnoreChecksum = ignoreChecksum == null ? false : ignoreChecksum;
 
             if (isDevMode) {
                 registerDispatcher(sample);
@@ -177,7 +181,7 @@ public class JamAgent {
                         if (isDebugMode) {
                             System.out.println("Applying " + accelleration.target() + " onto " + typeDescription);
                         }
-                        if (!accelleration.checksum(classLoader, isDebugMode) && !isDevMode) {
+                        if (!accelleration.checksum(classLoader, isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
                             throw new IllegalStateException("Could not apply " + accelleration + " due to hash code mismatch");
                         }
                         MethodAccelleration.Binaries binaries = accelleration.binaries(byteBuddy,
