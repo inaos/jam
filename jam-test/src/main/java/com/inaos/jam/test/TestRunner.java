@@ -34,6 +34,8 @@ public class TestRunner {
 	
 	private boolean debugMode;
 
+	private boolean ignoreChecksum;
+
     public TestRunner(String libraryUri) {
         this.libraryUri = libraryUri;
     }
@@ -53,6 +55,11 @@ public class TestRunner {
 		debugMode = true;
 		return this;
 	}
+
+	public TestRunner ignoreChecksum() {
+        ignoreChecksum = true;
+        return this;
+    }
 
     public void run(Class<?> main) throws IOException {
         InputStream in = TestRunner.class.getResourceAsStream("/jam-agent.jar");
@@ -89,6 +96,7 @@ public class TestRunner {
                 + "library=" + libraryUri
 				+ ",debugMode=" + debugMode
                 + ",devMode=" + devMode
+                + ",ignoreChecksum=" + ignoreChecksum
                 + (sample != null ? ",sample=" + sample.getAbsolutePath() : ""));
         command.add(TestMain.class.getName());
         command.add(main.getName());
