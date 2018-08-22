@@ -36,7 +36,7 @@ public class JamAttacher {
         File materializedAgentJar;
         try {
             try {
-                materializedAgentJar = File.createTempFile("inaos-agent", ".jar");
+                materializedAgentJar = File.createTempFile("jam-agent", ".jar");
                 OutputStream out = new FileOutputStream(materializedAgentJar);
                 try {
                     byte[] buffer = new byte[1024];
