@@ -328,7 +328,7 @@ class MethodAccelleration {
             }
             return false;
         } else {
-            if (checksums.contains(computed[0])) {
+            if (!CheckSumVisitor.isMd5Available() || checksums.contains(computed[0])) {
                 return true;
             } else if (debug) {
                 System.out.println("Checksum for " + this + " not equal: " + computed[0]);
