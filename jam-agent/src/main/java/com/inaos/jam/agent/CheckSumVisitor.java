@@ -53,6 +53,10 @@ abstract class CheckSumVisitor extends MethodVisitor {
         this.sb = new StringBuilder();
     }
 
+    static boolean isMd5Available() {
+        return MESSAGE_DIGEST != null;
+    }
+
     @Override
     public void visitInsn(int opcode) {
         sb.append(opcode);

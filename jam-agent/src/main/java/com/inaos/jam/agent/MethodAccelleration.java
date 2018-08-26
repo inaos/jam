@@ -318,11 +318,13 @@ class MethodAccelleration {
                 in.close();
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            if (debug) {
+                System.out.println("I/O error during checksum computation: " + e.getMessage());
+            }
         }
         if (computed[0] == null) {
             if (debug) {
-                System.out.println("Could not compute checksum for " + this);
+                System.out.println("Could not compute checksum for " + this + " (MD5 available: " + CheckSumVisitor.isMd5Available() + ")");
             }
             return false;
         } else {
