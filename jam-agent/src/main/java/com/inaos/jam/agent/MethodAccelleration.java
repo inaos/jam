@@ -35,7 +35,6 @@ import net.bytebuddy.jar.asm.ClassVisitor;
 import net.bytebuddy.jar.asm.MethodVisitor;
 import net.bytebuddy.jar.asm.Opcodes;
 import net.bytebuddy.matcher.ElementMatcher;
-import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
@@ -326,9 +325,9 @@ class MethodAccelleration {
             if (debug) {
                 System.out.println("Could not compute checksum for " + this + " (MD5 available: " + CheckSumVisitor.isMd5Available() + ")");
             }
-            return false;
+            return !CheckSumVisitor.isMd5Available();
         } else {
-            if (!CheckSumVisitor.isMd5Available() || checksums.contains(computed[0])) {
+            if (checksums.contains(computed[0])) {
                 return true;
             } else if (debug) {
                 System.out.println("Checksum for " + this + " not equal: " + computed[0]);
