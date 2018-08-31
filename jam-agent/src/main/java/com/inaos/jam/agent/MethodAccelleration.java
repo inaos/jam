@@ -278,7 +278,7 @@ class MethodAccelleration {
         return inlined;
     }
 
-    boolean checksum(ClassLoader classLoader, boolean debug) {
+    boolean checksum(final ClassLoader classLoader, final boolean debug) {
         List<String> checksums = Arrays.asList(annotation.getValue(CHECKSUM).resolve(String[].class));
         InputStream in = classLoader.getResourceAsStream(annotation.getValue(TYPE)
                 .resolve(TypeDescription.class)
@@ -298,11 +298,14 @@ class MethodAccelleration {
                 }
                 sb.append(")");
                 new ClassReader(in).accept(new ClassVisitor(Opcodes.ASM6) {
+                    private boolean methodFound;
+
                     @Override
                     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
                         if ((access & Opcodes.ACC_BRIDGE) == 0
                                 && name.equals(annotation.getValue(METHOD).resolve(String.class))
                                 && sb.toString().equals(desc)) {
+                            methodFound = true;
                             return new CheckSumVisitor() {
                                 @Override
                                 void onChecksum(String checksum) {
@@ -311,6 +314,16 @@ class MethodAccelleration {
                             };
                         }
                         return null;
+                    }
+
+                    @Override
+                    public void visitEnd() {
+                        if (debug && !methodFound) {
+                            System.out.println("Could not locate method " + annotation.getValue(METHOD).resolve(String.class)
+                                    + sb.toString()
+                                    + " in " + annotation.getValue(TYPE).resolve(TypeDescription.class).getName()
+                                    + " of " + classLoader);
+                        }
                     }
                 }, ClassReader.SKIP_DEBUG);
             } finally {
