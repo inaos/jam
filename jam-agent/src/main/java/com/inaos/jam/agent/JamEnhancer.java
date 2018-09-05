@@ -141,6 +141,11 @@ public class JamEnhancer {
             }
         }
 
+        Set<String> remainingCaptures = new HashSet<String>();
+        for (String capture : captures.keySet()) {
+            remainingCaptures.add(capture.replace('.', '/') + ".class");
+        }
+
         JarInputStream jarInputStream = new JarInputStream(new BufferedInputStream(new FileInputStream(sourceJar)));
         try {
             if (!targetJar.isFile() && !targetJar.createNewFile()) {
@@ -153,6 +158,7 @@ public class JamEnhancer {
             try {
                 JarEntry jarEntry;
                 while ((jarEntry = jarInputStream.getNextJarEntry()) != null) {
+                    remainingCaptures.remove(jarEntry.getName());
                     byte[] replacement = injections.remove(jarEntry.getName());
                     if (replacement == null) {
                         jarOutputStream.putNextEntry(jarEntry);
@@ -201,6 +207,10 @@ public class JamEnhancer {
             }
         } finally {
             jarInputStream.close();
+        }
+
+        if (!remainingCaptures.isEmpty()) {
+            throw new IllegalStateException("Could not find all capture classes in this jar file: " + remainingCaptures);
         }
     }
 
