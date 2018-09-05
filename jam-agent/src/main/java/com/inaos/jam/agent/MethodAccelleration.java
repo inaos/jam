@@ -18,6 +18,7 @@
 package com.inaos.jam.agent;
 
 import com.inaos.jam.api.Acceleration;
+import com.inaos.jam.boot.JamDestructor;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -64,7 +65,8 @@ class MethodAccelleration {
             EXPECTED_NAMES,
             CAPTURE,
             CAPTURE_TYPE,
-            CAPTURE_FIELDS;
+            CAPTURE_FIELDS,
+            REGISTER_DESTRUCTOR;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -87,6 +89,8 @@ class MethodAccelleration {
         TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
         CAPTURE_TYPE = capture.getDeclaredMethods().filter(named("type")).getOnly();
         CAPTURE_FIELDS = capture.getDeclaredMethods().filter(named("fields")).getOnly();
+        TypeDescription desctructor = new TypeDescription.ForLoadedType(JamDestructor.class);
+        REGISTER_DESTRUCTOR = desctructor.getDeclaredMethods().filter(named("register")).getOnly();
     }
 
     static List<MethodAccelleration> findAll(URL url) {
@@ -278,16 +282,12 @@ class MethodAccelleration {
                 }
                 initialization = MethodCall.invoke(initMethod).andThen(initialization);
             }
-            List<String> destructionMethods = new ArrayList<String>();
             for (MethodDescription destroyMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Destroy.class))) {
                 if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
                     throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
                 }
-                destructionMethods.add(destroyMethod.getName());
+                initialization = MethodCall.invoke(REGISTER_DESTRUCTOR).with(dispatcher, destroyMethod.getName()).andThen(initialization);
             }
-//            if (!destructionMethods.isEmpty()) { // TODO: Add to an initializer as shut down hook
-//                destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
-//            }
             types.add(byteBuddy.redefine(dispatcher, compoundLocator)
                     .invokable(isTypeInitializer())
                     .intercept(MethodCall.invoke(SYSTEM_LOAD_LIBRARY).with(resource).andThen(initialization))
@@ -335,62 +335,58 @@ class MethodAccelleration {
         return inlined;
     }
 
-    boolean checksum(final ClassLoader classLoader, final boolean debug) {
+    boolean checksum(final ClassFileLocator classFileLocator, final boolean debug) {
         List<String> checksums = Arrays.asList(annotation.getValue(CHECKSUM).resolve(String[].class));
-        InputStream in = classLoader.getResourceAsStream(annotation.getValue(TYPE)
-                .resolve(TypeDescription.class)
-                .getInternalName() + ".class");
-        if (in == null) {
+        ClassFileLocator.Resolution resolution;
+        try {
+            resolution = classFileLocator.locate(annotation.getValue(TYPE).resolve(TypeDescription.class).getName());
+        } catch (IOException e) {
+            if (debug) {
+                System.out.println("I/O error during checksum computation: " + e.getMessage());
+            }
+            resolution = null;
+        }
+        if (resolution == null || !resolution.isResolved()) {
             if (debug) {
                 System.out.println("Could not locate class file for computing checksum for: " + this);
             }
             return checksums.isEmpty();
         }
         final String[] computed = new String[1];
-        try {
-            try {
-                final StringBuilder sb = new StringBuilder().append("(");
-                for (TypeDescription typeDescription : annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)) {
-                    sb.append(typeDescription.getDescriptor());
-                }
-                sb.append(")");
-                new ClassReader(in).accept(new ClassVisitor(Opcodes.ASM6) {
-                    private boolean methodFound;
-
-                    @Override
-                    public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-                        if ((access & Opcodes.ACC_BRIDGE) == 0
-                                && name.equals(annotation.getValue(METHOD).resolve(String.class))
-                                && desc.startsWith(sb.toString())) {
-                            methodFound = true;
-                            return new CheckSumVisitor() {
-                                @Override
-                                void onChecksum(String checksum) {
-                                    computed[0] = checksum;
-                                }
-                            };
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    public void visitEnd() {
-                        if (debug && !methodFound) {
-                            System.out.println("Could not locate method " + annotation.getValue(METHOD).resolve(String.class)
-                                    + sb.toString()
-                                    + " in " + annotation.getValue(TYPE).resolve(TypeDescription.class).getName()
-                                    + " of " + classLoader);
-                        }
-                    }
-                }, ClassReader.SKIP_DEBUG);
-            } finally {
-                in.close();
-            }
-        } catch (IOException e) {
-            if (debug) {
-                System.out.println("I/O error during checksum computation: " + e.getMessage());
-            }
+        final StringBuilder sb = new StringBuilder().append("(");
+        for (TypeDescription typeDescription : annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)) {
+            sb.append(typeDescription.getDescriptor());
         }
+        sb.append(")");
+        new ClassReader(resolution.resolve()).accept(new ClassVisitor(Opcodes.ASM6) {
+            private boolean methodFound;
+
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                if ((access & Opcodes.ACC_BRIDGE) == 0
+                        && name.equals(annotation.getValue(METHOD).resolve(String.class))
+                        && desc.startsWith(sb.toString())) {
+                    methodFound = true;
+                    return new CheckSumVisitor() {
+                        @Override
+                        void onChecksum(String checksum) {
+                            computed[0] = checksum;
+                        }
+                    };
+                }
+                return null;
+            }
+
+            @Override
+            public void visitEnd() {
+                if (debug && !methodFound) {
+                    System.out.println("Could not locate method " + annotation.getValue(METHOD).resolve(String.class)
+                            + sb.toString()
+                            + " in " + annotation.getValue(TYPE).resolve(TypeDescription.class).getName()
+                            + " of " + classLoader);
+                }
+            }
+        }, ClassReader.SKIP_DEBUG);
         if (computed[0] == null) {
             if (debug) {
                 System.out.println("Could not compute checksum for " + this + " (MD5 available: " + CheckSumVisitor.isMd5Available() + ")");

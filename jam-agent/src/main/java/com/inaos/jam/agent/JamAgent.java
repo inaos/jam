@@ -25,6 +25,7 @@ import net.bytebuddy.agent.builder.ResettableClassFileTransformer;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
+import net.bytebuddy.dynamic.ClassFileLocator;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.MethodGraph;
@@ -181,8 +182,8 @@ public class JamAgent {
                         if (isDebugMode) {
                             System.out.println("Applying " + accelleration.target() + " onto " + typeDescription);
                         }
-                        if (!accelleration.checksum(classLoader, isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
-                            throw new IllegalStateException("Could not apply " + accelleration + " due to hash code mismatch");
+                        if (!accelleration.checksum(ClassFileLocator.ForClassLoader.of(classLoader), isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
+                            throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
                         }
                         MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy,
                                 Platform.NATIVE_SHARED_OBJ_FOLDER,
