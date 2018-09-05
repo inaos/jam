@@ -156,7 +156,11 @@ class MethodAccelleration {
         this.classLoader = classLoader;
     }
 
-    AgentBuilder.RawMatcher type(boolean noExpectedName) {
+    String type() {
+        return annotation.getValue(TYPE).resolve(TypeDescription.class).getName();
+    }
+
+    AgentBuilder.RawMatcher typeMatcher(boolean noExpectedName) {
         AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(named(annotation.getValue(TYPE)
                 .resolve(TypeDescription.class)
                 .getName()));
