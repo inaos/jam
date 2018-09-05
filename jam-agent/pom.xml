@@ -117,6 +117,7 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
+                                        <Main-Class>com.inaos.jam.agent.JamEnhancer</Main-Class>
                                         <Agent-Class>com.inaos.jam.agent.JamAgent</Agent-Class>
                                         <Premain-Class>com.inaos.jam.agent.JamAgent</Premain-Class>
                                         <Can-Retransform-Classes>true</Can-Retransform-Classes>
