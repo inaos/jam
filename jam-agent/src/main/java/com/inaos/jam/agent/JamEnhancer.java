@@ -88,6 +88,7 @@ public class JamEnhancer {
                 injections.put(entry.getKey().getInternalName() + ".class", entry.getValue());
             }
 
+            // TODO: make target platform configurable
             MethodAccelleration.StaleBinaries staleBinaries = accelleration.staleBinaries(byteBuddy,
                     Platform.NATIVE_SHARED_OBJ_FOLDER,
                     Platform.NATIVE_SHARED_OBJ_PREFIX,
