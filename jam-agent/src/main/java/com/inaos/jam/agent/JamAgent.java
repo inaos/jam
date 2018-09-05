@@ -172,7 +172,7 @@ public class JamAgent {
                 } else {
                     adviceTransformer = adviceTransformer.advice(accelleration.method(), accelleration.target());
                 }
-                builder = builder.type(accelleration.type(!isExpectedName)).transform(new AgentBuilder.Transformer() {
+                builder = builder.type(accelleration.typeMatcher(!isExpectedName)).transform(new AgentBuilder.Transformer() {
                     @Override
                     public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
                                                             TypeDescription typeDescription,
@@ -184,7 +184,7 @@ public class JamAgent {
                         if (!accelleration.checksum(classLoader, isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
                             throw new IllegalStateException("Could not apply " + accelleration + " due to hash code mismatch");
                         }
-                        MethodAccelleration.Binaries binaries = accelleration.binaries(byteBuddy,
+                        MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy,
                                 Platform.NATIVE_SHARED_OBJ_FOLDER,
                                 Platform.NATIVE_SHARED_OBJ_PREFIX,
                                 Platform.NATIVE_SHARED_OBJ_EXT,

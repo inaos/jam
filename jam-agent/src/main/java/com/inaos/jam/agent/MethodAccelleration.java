@@ -59,6 +59,7 @@ class MethodAccelleration {
             DISPATCHER,
             BINARY,
             SYSTEM_LOAD,
+            SYSTEM_LOAD_LIBRARY,
             INLINE,
             EXPECTED_NAMES,
             CAPTURE,
@@ -82,6 +83,7 @@ class MethodAccelleration {
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
         TypeDescription system = new TypeDescription.ForLoadedType(System.class);
         SYSTEM_LOAD = system.getDeclaredMethods().filter(named("load")).getOnly();
+        SYSTEM_LOAD_LIBRARY = system.getDeclaredMethods().filter(named("loadLibary")).getOnly();
         TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
         CAPTURE_TYPE = capture.getDeclaredMethods().filter(named("type")).getOnly();
         CAPTURE_FIELDS = capture.getDeclaredMethods().filter(named("fields")).getOnly();
@@ -208,7 +210,7 @@ class MethodAccelleration {
         return classFileLocator;
     }
 
-    Binaries binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassLoader userLoader) {
+    LiveBinaries liveBinaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassLoader userLoader) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         List<Runnable> destructions = new ArrayList<Runnable>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
@@ -257,7 +259,58 @@ class MethodAccelleration {
                     .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()).andThen(initialization))
                     .make());
         }
-        return new Binaries(types, destructions);
+        return new LiveBinaries(types, destructions);
+    }
+
+    StaleBinaries staleBinaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassFileLocator classFileLocator) {
+        Map<String, byte[]> binaries = new HashMap<String, byte[]>();
+        List<DynamicType> types = new ArrayList<DynamicType>();
+        for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
+            String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
+            TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
+            ClassFileLocator compoundLocator = new ClassFileLocator.Compound(this.classFileLocator, classFileLocator);
+            dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
+
+            Implementation initialization = StubMethod.INSTANCE;
+            for (MethodDescription initMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Init.class))) {
+                if (!initMethod.isStatic() || !initMethod.getParameters().isEmpty() || !initMethod.getReturnType().represents(void.class)) {
+                    throw new IllegalStateException("Stateful initializer method: " + initMethod);
+                }
+                initialization = MethodCall.invoke(initMethod).andThen(initialization);
+            }
+            List<String> destructionMethods = new ArrayList<String>();
+            for (MethodDescription destroyMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Destroy.class))) {
+                if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
+                    throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
+                }
+                destructionMethods.add(destroyMethod.getName());
+            }
+//            if (!destructionMethods.isEmpty()) { // TODO: Add to an initializer as shut down hook
+//                destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
+//            }
+            types.add(byteBuddy.redefine(dispatcher, compoundLocator)
+                    .invokable(isTypeInitializer())
+                    .intercept(MethodCall.invoke(SYSTEM_LOAD_LIBRARY).with(resource).andThen(initialization))
+                    .make());
+            InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
+            try {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                try {
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, length);
+                    }
+                } finally {
+                    out.close();
+                }
+                in.close();
+                binaries.put(resource + "." + extension, out.toByteArray());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        return new StaleBinaries(types, binaries);
     }
 
     List<Capture> captures() {
@@ -373,15 +426,27 @@ class MethodAccelleration {
         return sb.append(")").toString();
     }
 
-    static class Binaries {
+    static class LiveBinaries {
 
         final List<DynamicType.Unloaded<?>> types;
 
         final List<Runnable> destructions;
 
-        private Binaries(List<DynamicType.Unloaded<?>> types, List<Runnable> destructions) {
+        private LiveBinaries(List<DynamicType.Unloaded<?>> types, List<Runnable> destructions) {
             this.types = types;
             this.destructions = destructions;
+        }
+    }
+
+    static class StaleBinaries {
+
+        final List<DynamicType> types;
+
+        final Map<String, byte[]> binaries;
+
+        private StaleBinaries(List<DynamicType> types, Map<String, byte[]> binaries) {
+            this.types = types;
+            this.binaries = binaries;
         }
     }
 
