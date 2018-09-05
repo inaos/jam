@@ -6,16 +6,21 @@ import com.inaos.jam.boot.JamObjectCapture;
 import com.inaos.jam.tool.Platform;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.asm.Advice;
+import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.ClassFileLocator;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.scaffold.MethodGraph;
+import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.jar.*;
+
+import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
+import static net.bytebuddy.matcher.ElementMatchers.named;
 
 public class JamEnhancer {
 
@@ -49,13 +54,13 @@ public class JamEnhancer {
         locators.add(ClassFileLocator.ForClassLoader.of(JamEnhancer.class.getClassLoader()));
         ClassFileLocator classFileLocator = new ClassFileLocator.Compound(locators);
 
-        // TODO: CAPTURES
-
         final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
         TypePool typePool = TypePool.Default.WithLazyResolution.of(classFileLocator);
 
         Map<String, byte[]> injections = new HashMap<String, byte[]>();
         Map<String, byte[]> binaries = new HashMap<String, byte[]>();
+        Map<String, List<String>> captures = new HashMap<String, List<String>>();
+
         for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
             if (filtered.contains(accelleration.target()) || !accelleration.isActive(isDevMode)) {
                 if (isDebugMode) {
@@ -71,10 +76,10 @@ public class JamEnhancer {
                 throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
             }
 
-            TypeDescription type = typePool.describe(accelleration.type()).resolve();
+            TypeDescription typeDescription = typePool.describe(accelleration.type()).resolve();
             TypeDescription adviceType = typePool.describe(accelleration.target()).resolve();
             Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, isDevMode);
-            DynamicType result = byteBuddy.redefine(type, classFileLocator).visit((accelleration.isTrivialEnter()
+            DynamicType result = byteBuddy.redefine(typeDescription, classFileLocator).visit((accelleration.isTrivialEnter()
                     ? advice.to(TypeDescription.ForLoadedType.of(TrivialEnterAdvice.class), adviceType, classFileLocator)
                     : advice.to(adviceType, classFileLocator)).on(accelleration.method())).make();
 
@@ -93,8 +98,46 @@ public class JamEnhancer {
             }
             binaries.putAll(staleBinaries.binaries);
 
+            for (MethodAccelleration.Capture capture : accelleration.captures()) {
+                List<String> fields = captures.get(capture.getName());
+                if (fields == null) {
+                    fields = new ArrayList<String>();
+                }
+                fields.addAll(Arrays.asList(capture.getField()));
+                captures.put(capture.getName(), fields);
+            }
+
             if (isDebugMode) {
                 System.out.println("Registered accelleration: " + accelleration);
+            }
+        }
+
+        for (Map.Entry<String, List<String>> capture : captures.entrySet()) {
+            for (final String field : capture.getValue()) {
+                if (isDebugMode) {
+                    System.out.println("Applying capture for " + field + " of " + capture.getKey());
+                }
+                String internalName = capture.getKey().replace('.', '/') + ".class";
+                ClassFileLocator locator;
+                if (injections.containsKey(internalName)) {
+                    locator = new ClassFileLocator.Compound(ClassFileLocator.Simple.of(capture.getKey(), injections.get(internalName)), classFileLocator);
+                } else {
+                    locator = classFileLocator;
+                }
+
+                DynamicType dynamicType = byteBuddy.redefine(typePool.describe(capture.getKey()).resolve(), locator).visit(Advice.withCustomMapping()
+                        .bind(CaptureAdvice.CapturedField.class, field)
+                        .bind(CaptureAdvice.CapturedValue.class, new Advice.OffsetMapping() {
+                            @Override
+                            public Target resolve(TypeDescription instrumentedType,
+                                                  MethodDescription instrumentedMethod,
+                                                  Assigner assigner,
+                                                  Advice.ArgumentHandler argumentHandler,
+                                                  Sort sort) {
+                                return new Target.ForField.ReadOnly(instrumentedType.getDeclaredFields().filter(named(field)).getOnly());
+                            }
+                        }).to(CaptureAdvice.class).on(isConstructor())).make();
+                injections.put(dynamicType.getTypeDescription().getInternalName() + "class", dynamicType.getBytes());
             }
         }
 
