@@ -25,16 +25,17 @@ public class JamEnhancer {
 
     private final URL url;
 
-    private final boolean isDevMode, isDebugMode;
+    private final boolean isDevMode, isDebugMode, shouldIgnoreChecksum;
 
     private final Set<String> filtered;
 
     private final File sample;
 
-    public JamEnhancer(URL url, boolean isDevMode, boolean isDebugMode, Set<String> filtered, File sample) {
+    public JamEnhancer(URL url, boolean isDevMode, boolean isDebugMode, boolean shouldIgnoreChecksum, Set<String> filtered, File sample) {
         this.url = url;
         this.isDevMode = isDevMode;
         this.isDebugMode = isDebugMode;
+        this.shouldIgnoreChecksum = shouldIgnoreChecksum;
         this.filtered = filtered;
         this.sample = sample;
     }
@@ -48,9 +49,7 @@ public class JamEnhancer {
         locators.add(ClassFileLocator.ForClassLoader.of(JamEnhancer.class.getClassLoader()));
         ClassFileLocator classFileLocator = new ClassFileLocator.Compound(locators);
 
-        // TODO: BINARIES - SHUTDOWN HOOK
         // TODO: CAPTURES
-        // TODO: CHECKSUM
 
         final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
         TypePool typePool = TypePool.Default.WithLazyResolution.of(classFileLocator);
@@ -63,6 +62,13 @@ public class JamEnhancer {
                     System.out.println(accelleration + " is filtered or not active in current mode");
                 }
                 continue;
+            }
+
+            if (isDebugMode) {
+                System.out.println("Applying " + accelleration.target() + " onto " + accelleration.type());
+            }
+            if (!accelleration.checksum(classFileLocator, isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
+                throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
             }
 
             TypeDescription type = typePool.describe(accelleration.type()).resolve();
@@ -86,6 +92,10 @@ public class JamEnhancer {
                 injections.put(dynamicType.getTypeDescription().getInternalName() + ".class", dynamicType.getBytes());
             }
             binaries.putAll(staleBinaries.binaries);
+
+            if (isDebugMode) {
+                System.out.println("Registered accelleration: " + accelleration);
+            }
         }
 
         JarInputStream jarInputStream = new JarInputStream(new BufferedInputStream(new FileInputStream(sourceJar)));
