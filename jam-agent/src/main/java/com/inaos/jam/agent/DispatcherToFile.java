@@ -20,10 +20,7 @@ package com.inaos.jam.agent;
 import com.esotericsoftware.kryo.io.Output;
 import com.inaos.jam.observation.Observation;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,6 +32,17 @@ public class DispatcherToFile extends DispatcherBase {
     private final long maxObservationCount, maxObservationBytes;
 
     private final ConcurrentMap<String, AtomicLong> observationCount = new ConcurrentHashMap<String, AtomicLong>(), observationBytes = new ConcurrentHashMap<String, AtomicLong>();
+
+    public DispatcherToFile() throws IOException {
+        BufferedReader in = new BufferedReader(new InputStreamReader(getClass().getClassLoader().getResourceAsStream("META-INF/jam/sample.location"), "utf-8"));
+        try {
+            target = new File(in.readLine());
+            maxObservationCount = Long.parseLong(in.readLine());
+            maxObservationBytes = Long.parseLong(in.readLine());
+        } finally {
+            in.close();
+        }
+    }
 
     public DispatcherToFile(File target, long maxObservationCount, long maxObservationBytes) {
         this.target = target;
