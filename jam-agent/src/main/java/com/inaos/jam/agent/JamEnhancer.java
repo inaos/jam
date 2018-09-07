@@ -58,7 +58,25 @@ public class JamEnhancer {
             bootJar.close();
         }
         materializedBootJar.deleteOnExit();
-        locators.add(new ClassFileLocator.ForJarFile(new JarFile(materializedBootJar)));
+        InputStream libraryJar = config.url.openStream();
+        File materializedLibraryJar;
+        try {
+            materializedLibraryJar = File.createTempFile("inaos-library", ".jar");
+            OutputStream out = new FileOutputStream(materializedLibraryJar);
+            try {
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = libraryJar.read(buffer)) != -1) {
+                    out.write(buffer, 0, length);
+                }
+            } finally {
+                out.close();
+            }
+        } finally {
+            libraryJar.close();
+        }
+        materializedLibraryJar.deleteOnExit();
+        locators.add(new ClassFileLocator.ForJarFile(new JarFile(materializedLibraryJar)));
         ClassFileLocator classFileLocator = new ClassFileLocator.Compound(locators);
 
         final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);

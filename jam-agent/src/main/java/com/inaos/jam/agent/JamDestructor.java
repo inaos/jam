@@ -1,4 +1,4 @@
-package com.inaos.jam.boot;
+package com.inaos.jam.agent;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -13,7 +13,7 @@ public class JamDestructor extends Thread {
         Runtime.getRuntime().addShutdownHook(new JamDestructor());
     }
 
-    public void register(Class<?> dispatcher, String name) throws NoSuchMethodException {
+    public static void register(Class<?> dispatcher, String name) throws NoSuchMethodException {
         DESTRUCTORS.add(dispatcher.getDeclaredMethod(name));
     }
 
