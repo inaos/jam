@@ -15,6 +15,7 @@ import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
+import java.net.URL;
 import java.util.*;
 import java.util.jar.*;
 
@@ -36,6 +37,28 @@ public class JamEnhancer {
             locators.add(new ClassFileLocator.ForJarFile(new JarFile(additionalDependency)));
         }
         locators.add(ClassFileLocator.ForClassLoader.of(JamEnhancer.class.getClassLoader()));
+        InputStream bootJar = JamAgent.class.getResourceAsStream("/jam-boot.jar");
+        if (bootJar == null) {
+            throw new IllegalStateException("Boot jar not found");
+        }
+        File materializedBootJar;
+        try {
+            materializedBootJar = File.createTempFile("inaos-boot", ".jar");
+            OutputStream out = new FileOutputStream(materializedBootJar);
+            try {
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = bootJar.read(buffer)) != -1) {
+                    out.write(buffer, 0, length);
+                }
+            } finally {
+                out.close();
+            }
+        } finally {
+            bootJar.close();
+        }
+        materializedBootJar.deleteOnExit();
+        locators.add(new ClassFileLocator.ForJarFile(new JarFile(materializedBootJar)));
         ClassFileLocator classFileLocator = new ClassFileLocator.Compound(locators);
 
         final ByteBuddy byteBuddy = new ByteBuddy().with(MethodGraph.Compiler.ForDeclaredMethods.INSTANCE);
@@ -202,7 +225,7 @@ public class JamEnhancer {
         List<String> arguments = new ArrayList<String>();
         List<File> dependencies = new ArrayList<File>();
         Platform platform = Platform.CURRENT;
-        for (String arg : args) {
+        for (String arg : Arrays.asList(args).subList(2, args.length)) {
             if (arg.startsWith("dependency=")) {
                 dependencies.add(new File(arg.substring("dependency=".length())));
             } else if (arg.startsWith("platform=")) {

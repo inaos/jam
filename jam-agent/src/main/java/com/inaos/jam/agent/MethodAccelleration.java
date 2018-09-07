@@ -86,7 +86,7 @@ class MethodAccelleration {
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
         TypeDescription system = new TypeDescription.ForLoadedType(System.class);
         SYSTEM_LOAD = system.getDeclaredMethods().filter(named("load")).getOnly();
-        SYSTEM_LOAD_LIBRARY = system.getDeclaredMethods().filter(named("loadLibary")).getOnly();
+        SYSTEM_LOAD_LIBRARY = system.getDeclaredMethods().filter(named("loadLibrary")).getOnly();
         TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
         CAPTURE_TYPE = capture.getDeclaredMethods().filter(named("type")).getOnly();
         CAPTURE_FIELDS = capture.getDeclaredMethods().filter(named("fields")).getOnly();
