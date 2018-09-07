@@ -38,11 +38,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
-import java.net.URL;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
@@ -50,10 +46,6 @@ import static net.bytebuddy.matcher.ElementMatchers.isConstructor;
 import static net.bytebuddy.matcher.ElementMatchers.named;
 
 public class JamAgent {
-
-    private static final long MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
-
-    private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024 * 1024; // 1 MB
 
     public static void premain(String argument, Instrumentation instrumentation) {
         install(argument, instrumentation, AgentBuilder.RedefinitionStrategy.DISABLED);
@@ -68,13 +60,6 @@ public class JamAgent {
             return null;
         }
         try {
-            Boolean devMode = null;
-            Boolean expectedName = null;
-            Boolean debugMode = null;
-            Boolean ignoreChecksum = null;
-            URL url = null;
-            File sample = null;
-            Set<String> filtered = new HashSet<String>();
 
             InputStream bootJar = JamAgent.class.getResourceAsStream("/jam-boot.jar");
             if (bootJar == null) {
@@ -99,40 +84,10 @@ public class JamAgent {
 
             instrumentation.appendToBootstrapClassLoaderSearch(new JarFile(materializedBootJar));
 
-            for (String config : argument.split(",")) {
-                String[] pair = config.split("=");
-                if (pair.length != 2) {
-                    throw new IllegalArgumentException();
-                } else if (pair[0].equals("devMode")) {
-                    devMode = Boolean.parseBoolean(pair[1]);
-                } else if (pair[0].equals("expectedName")) {
-                    expectedName = Boolean.parseBoolean(pair[1]);
-                } else if (pair[0].equals("library")) {
-                    url = new URL(pair[1]);
-                } else if (pair[0].equals("sample")) {
-                    sample = new File(pair[1]);
-                } else if (pair[0].equals("debugMode")) {
-                    debugMode = Boolean.parseBoolean(pair[1]);
-                } else if (pair[0].equals("filter")) {
-                    filtered.add(pair[1]);
-                } else if (pair[0].equals("ignoreChecksum")) {
-                    ignoreChecksum = Boolean.parseBoolean(pair[1]);
-                } else {
-                    throw new IllegalArgumentException("Unknown configuration: " + pair[0]);
-                }
-            }
+            final JamConfig config = new JamConfig(Arrays.asList(argument.split(",")));
 
-            if (url == null) {
-                throw new IllegalArgumentException("Agent library is not set");
-            }
-
-            final boolean isDevMode = devMode == null ? false : devMode;
-            final boolean isExpectedName = expectedName == null ? true : expectedName;
-            final boolean isDebugMode = debugMode == null ? false : debugMode;
-            final boolean shouldIgnoreChecksum = ignoreChecksum == null ? false : ignoreChecksum;
-
-            if (isDevMode) {
-                registerDispatcher(sample);
+            if (config.devMode) {
+                registerDispatcher(config.sample);
             }
             registerCapture();
 
@@ -141,12 +96,12 @@ public class JamAgent {
             AgentBuilder builder = new AgentBuilder.Default(byteBuddy)
                     .with(redefinitionStrategy)
                     .disableClassFormatChanges();
-            if (isDebugMode) {
+            if (config.debugMode) {
                 builder = builder.with(AgentBuilder.Listener.StreamWriting.toSystemError().withTransformationsOnly());
             }
 
             final Collection<Runnable> destructions = Collections.newSetFromMap(new ConcurrentHashMap<Runnable, Boolean>());
-            if (!isDevMode) {
+            if (!config.devMode) {
                 Runtime.getRuntime().addShutdownHook(new Thread() {
                     @Override
                     public void run() {
@@ -158,31 +113,31 @@ public class JamAgent {
             }
 
             final ClassLoadingStrategy<ClassLoader> classLoadingStrategy = ClassLoadingStrategy.Default.INJECTION.allowExistingTypes();
-            for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
-                if (filtered.contains(accelleration.target()) || !accelleration.isActive(isDevMode)) {
-                    if (isDebugMode) {
+            for (final MethodAccelleration accelleration : MethodAccelleration.findAll(config.url)) {
+                if (config.filtered.contains(accelleration.target()) || !accelleration.isActive(config.devMode)) {
+                    if (config.debugMode) {
                         System.out.println(accelleration + " is filtered or not active in current mode");
                     }
                     continue;
                 }
                 AgentBuilder.Transformer.ForAdvice adviceTransformer = new AgentBuilder.Transformer.ForAdvice(Advice.withCustomMapping()
-                        .bind(DevMode.class, isDevMode))
+                        .bind(DevMode.class, config.devMode))
                         .include(accelleration.classFileLocator());
                 if (accelleration.isTrivialEnter()) {
                     adviceTransformer = adviceTransformer.advice(accelleration.method(), TrivialEnterAdvice.class.getName(), accelleration.target());
                 } else {
                     adviceTransformer = adviceTransformer.advice(accelleration.method(), accelleration.target());
                 }
-                builder = builder.type(accelleration.typeMatcher(!isExpectedName)).transform(new AgentBuilder.Transformer() {
+                builder = builder.type(accelleration.typeMatcher(!config.expectedName)).transform(new AgentBuilder.Transformer() {
                     @Override
                     public DynamicType.Builder<?> transform(DynamicType.Builder<?> builder,
                                                             TypeDescription typeDescription,
                                                             ClassLoader classLoader,
                                                             JavaModule module) {
-                        if (isDebugMode) {
+                        if (config.debugMode) {
                             System.out.println("Applying " + accelleration.target() + " onto " + typeDescription);
                         }
-                        if (!accelleration.checksum(ClassFileLocator.ForClassLoader.of(classLoader), isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
+                        if (!accelleration.checksum(ClassFileLocator.ForClassLoader.of(classLoader), config.debugMode) && !config.devMode && !config.ignoreChecksum) {
                             throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
                         }
                         MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy,
@@ -193,7 +148,7 @@ public class JamAgent {
                         for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, classLoadingStrategy);
                         }
-                        if (!isDevMode) {
+                        if (!config.devMode) {
                             classLoadingStrategy.load(classLoader, accelleration.inlined());
                             destructions.addAll(binaries.destructions);
                         }
@@ -209,7 +164,7 @@ public class JamAgent {
                                                                     TypeDescription typeDescription,
                                                                     ClassLoader classLoader,
                                                                     JavaModule module) {
-                                if (isDebugMode) {
+                                if (config.debugMode) {
                                     System.out.println("Applying capture for " + field + " of " + typeDescription + " for " + accelleration);
                                 }
                                 return builder.visit(Advice.withCustomMapping()
@@ -229,7 +184,7 @@ public class JamAgent {
                         builder = identified.asDecorator();
                     }
                 }
-                if (isDebugMode) {
+                if (config.debugMode) {
                     System.out.println("Registered accelleration: " + accelleration);
                 }
             }
@@ -250,7 +205,7 @@ public class JamAgent {
         } else {
             which = Class.forName("com.inaos.jam.agent.DispatcherToFile")
                     .getConstructor(File.class, long.class, long.class)
-                    .newInstance(sample, MAX_OBSERVATION_COUNT_FOR_FILES, MAX_OBSERVATION_BYTES_FOR_FILES);
+                    .newInstance(sample, JamConfig.MAX_OBSERVATION_COUNT_FOR_FILES, JamConfig.MAX_OBSERVATION_BYTES_FOR_FILES);
         }
         Class<?> dispatcher = Class.forName("com.inaos.jam.boot.JamAgentDispatcher");
         Field instance = dispatcher.getField("dispatcher");
