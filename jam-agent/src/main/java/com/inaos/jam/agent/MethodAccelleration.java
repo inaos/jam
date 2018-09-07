@@ -19,6 +19,7 @@ package com.inaos.jam.agent;
 
 import com.inaos.jam.api.Acceleration;
 import com.inaos.jam.boot.JamDestructor;
+import com.inaos.jam.tool.Platform;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -214,15 +215,15 @@ class MethodAccelleration {
         return classFileLocator;
     }
 
-    LiveBinaries liveBinaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassLoader userLoader) {
+    LiveBinaries liveBinaries(ByteBuddy byteBuddy, Platform platform, ClassLoader userLoader) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         List<Runnable> destructions = new ArrayList<Runnable>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
-            InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
+            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARY).resolve(String.class);
+            InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
             File file;
             try {
-                file = File.createTempFile(resource, "." + extension);
+                file = File.createTempFile(resource, "." + platform.extension);
                 OutputStream out = new FileOutputStream(file);
                 try {
                     byte[] buffer = new byte[1024];
@@ -266,11 +267,11 @@ class MethodAccelleration {
         return new LiveBinaries(types, destructions);
     }
 
-    StaleBinaries staleBinaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassFileLocator classFileLocator) {
+    StaleBinaries staleBinaries(ByteBuddy byteBuddy, Platform platform, ClassFileLocator classFileLocator) {
         Map<String, byte[]> binaries = new HashMap<String, byte[]>();
         List<DynamicType> types = new ArrayList<DynamicType>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
+            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARY).resolve(String.class);
             TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
             ClassFileLocator compoundLocator = new ClassFileLocator.Compound(this.classFileLocator, classFileLocator);
             dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
@@ -292,7 +293,7 @@ class MethodAccelleration {
                     .invokable(isTypeInitializer())
                     .intercept(MethodCall.invoke(SYSTEM_LOAD_LIBRARY).with(resource).andThen(initialization))
                     .make());
-            InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
+            InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
             try {
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 try {
@@ -305,7 +306,7 @@ class MethodAccelleration {
                     out.close();
                 }
                 in.close();
-                binaries.put(resource + "." + extension, out.toByteArray());
+                binaries.put(resource + "." + platform.extension, out.toByteArray());
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }

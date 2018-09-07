@@ -29,7 +29,7 @@ public class JamEnhancer {
         this.config = config;
     }
 
-    public void enhance(File sourceJar, File targetJar, File... additionalDependencies) throws IOException {
+    public void enhance(File sourceJar, File targetJar, Platform platform, File... additionalDependencies) throws IOException {
         List<ClassFileLocator> locators = new ArrayList<ClassFileLocator>();
         locators.add(new ClassFileLocator.ForJarFile(new JarFile(sourceJar)));
         for (File additionalDependency : additionalDependencies) {
@@ -72,12 +72,7 @@ public class JamEnhancer {
                 injections.put(entry.getKey().getInternalName() + ".class", entry.getValue());
             }
 
-            // TODO: make target platform configurable
-            MethodAccelleration.StaleBinaries staleBinaries = accelleration.staleBinaries(byteBuddy,
-                    Platform.NATIVE_SHARED_OBJ_FOLDER,
-                    Platform.NATIVE_SHARED_OBJ_PREFIX,
-                    Platform.NATIVE_SHARED_OBJ_EXT,
-                    classFileLocator);
+            MethodAccelleration.StaleBinaries staleBinaries = accelleration.staleBinaries(byteBuddy, platform, classFileLocator);
             for (DynamicType dynamicType : staleBinaries.types) {
                 injections.put(dynamicType.getTypeDescription().getInternalName() + ".class", dynamicType.getBytes());
             }
@@ -206,13 +201,16 @@ public class JamEnhancer {
         File source = new File(args[0]), target = new File(args[1]);
         List<String> arguments = new ArrayList<String>();
         List<File> dependencies = new ArrayList<File>();
+        Platform platform = Platform.CURRENT;
         for (String arg : args) {
             if (arg.startsWith("dependency=")) {
                 dependencies.add(new File(arg.substring("dependency=".length())));
+            } else if (arg.startsWith("platform=")) {
+                platform = Platform.of(arg.substring("platform=".length()));
             } else {
                 arguments.add(arg);
             }
         }
-        new JamEnhancer(new JamConfig(arguments)).enhance(source, target, dependencies.toArray(new File[0]));
+        new JamEnhancer(new JamConfig(arguments)).enhance(source, target, platform, dependencies.toArray(new File[0]));
     }
 }

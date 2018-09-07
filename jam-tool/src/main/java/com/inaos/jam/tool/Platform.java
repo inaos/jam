@@ -17,59 +17,67 @@
 package com.inaos.jam.tool;
 
 public class Platform {
-    public static final String OS_NAME = getSystemProperty("os.name");
 
-    public static final String OS_ARCH = getSystemProperty("os.arch");
+    public static final Platform CURRENT;
 
-    public static final String OS_NAME_WINDOWS_PREFIX = "Windows";
+    public static final Platform
+            WINDOWS_X64 = new Platform("dll", "", "win32-amd64"),
+            WINDOWS_X86 = new Platform("dll", "", "win32-x86"),
+            LINUX_X64 = new Platform("so", "lib", "linux-amd64"),
+            LINUX_X86 = new Platform("so", "lib", "linux-x86");
 
-    public static final boolean IS_OS_LINUX = isOsMatchesName("Linux") || isOsMatchesName("LINUX");
+    public final String extension;
 
-    public static final boolean IS_OS_WINDOWS = isOsMatchesName(OS_NAME_WINDOWS_PREFIX);
+    public final String prefix;
 
-    public static final boolean IS_OS_ARCH_64 = "amd64".equals(OS_ARCH);
+    public final String folder;
 
-    public static final boolean IS_OS_ARCH_32 = "x86".equals(OS_ARCH);
-
-    public static final String NATIVE_SHARED_OBJ_EXT;
-
-    public static final String NATIVE_SHARED_OBJ_PREFIX;
-
-    public static final String NATIVE_SHARED_OBJ_FOLDER;
+    public Platform(String extension, String prefix, String folder) {
+        this.extension = extension;
+        this.prefix = prefix;
+        this.folder = folder;
+    }
 
     static {
-        if (IS_OS_LINUX) {
-            NATIVE_SHARED_OBJ_EXT = "so";
-            NATIVE_SHARED_OBJ_PREFIX = "lib";
-            if (IS_OS_ARCH_64) {
-                NATIVE_SHARED_OBJ_FOLDER = "linux-amd64";
-            } else if (IS_OS_ARCH_32) {
-                NATIVE_SHARED_OBJ_FOLDER = "linux-i368";
-            } else {
-                NATIVE_SHARED_OBJ_FOLDER = null;
-                throw new IllegalArgumentException("Operating System Architecture not supported: " + OS_ARCH);
-            }
-        } else if (IS_OS_WINDOWS) {
-            NATIVE_SHARED_OBJ_EXT = "dll";
-            NATIVE_SHARED_OBJ_PREFIX = "";
-            if (IS_OS_ARCH_64) {
-                NATIVE_SHARED_OBJ_FOLDER = "win32-amd64";
-            } else if (IS_OS_ARCH_32) {
-                NATIVE_SHARED_OBJ_FOLDER = "win32-x86";
-            } else {
-                NATIVE_SHARED_OBJ_FOLDER = null;
-                throw new IllegalArgumentException("Operating System Architecture not supported: " + OS_ARCH);
-            }
+        String osArch = getSystemProperty("os.arch"), osName = getSystemProperty("os.name");
+        String extension, prefix, folder;
+        if ("amd64".equals(osArch)) {
+            folder = "linux-amd64";
+        } else if ("x86".equals(osArch)) {
+            folder = "linux-i368";
         } else {
-            NATIVE_SHARED_OBJ_EXT = null;
-            NATIVE_SHARED_OBJ_PREFIX = null;
-            NATIVE_SHARED_OBJ_FOLDER = null;
-            throw new IllegalArgumentException("Operating System not supported: " + OS_NAME);
+            throw new IllegalArgumentException("Operating System Architecture not supported: " + osArch);
+        }
+        if (isOsMatchesName(osName, "Linux") || isOsMatchesName(osName, "LINUX")) {
+            extension = "so";
+            prefix = "lib";
+        } else if (isOsMatchesName(osName, "Windows")) {
+            extension = "dll";
+            prefix = "";
+        } else {
+            throw new IllegalArgumentException("Operating System not supported: " + osName);
+        }
+        CURRENT = new Platform(extension, prefix, folder);
+    }
+
+    public static Platform of(String name) {
+        if (name.equalsIgnoreCase("WINDOWS_X64")) {
+            return WINDOWS_X64;
+        } else if (name.equalsIgnoreCase("WINDOWS_X64")) {
+            return WINDOWS_X64;
+        } else if (name.equalsIgnoreCase("WINDOWS_X86")) {
+            return WINDOWS_X86;
+        } else if (name.equalsIgnoreCase("LINUX_X64")) {
+            return LINUX_X64;
+        } else if (name.equalsIgnoreCase("LINUX_X86")) {
+            return LINUX_X86;
+        } else {
+            throw new IllegalArgumentException("Unknown platform: " + name);
         }
     }
 
-    private static boolean isOsMatchesName(String osNamePrefix) {
-        return isOSNameMatch(OS_NAME, osNamePrefix);
+    private static boolean isOsMatchesName(String osName, String osNamePrefix) {
+        return isOSNameMatch(osName, osNamePrefix);
     }
 
     private static boolean isOSNameMatch(String osName, String osNamePrefix) {
@@ -82,8 +90,7 @@ public class Platform {
     private static String getSystemProperty(String property) {
         try {
             return System.getProperty(property);
-        } catch (SecurityException ex) {
-            // we are not allowed to look at this property
+        } catch (SecurityException e) { // We are not allowed to look at this property
             throw new IllegalStateException("Caught a SecurityException reading the system property '" + property + "'; the SystemUtils property value will default to null.");
         }
     }

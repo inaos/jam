@@ -38,7 +38,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarFile;
 
@@ -56,11 +58,7 @@ public class JamAgent {
     }
 
     private static ResettableClassFileTransformer install(String argument, Instrumentation instrumentation, AgentBuilder.RedefinitionStrategy redefinitionStrategy) {
-        if (Platform.NATIVE_SHARED_OBJ_EXT == null || Platform.NATIVE_SHARED_OBJ_PREFIX == null || Platform.NATIVE_SHARED_OBJ_FOLDER == null) {
-            return null;
-        }
         try {
-
             InputStream bootJar = JamAgent.class.getResourceAsStream("/jam-boot.jar");
             if (bootJar == null) {
                 throw new IllegalStateException("Boot jar not found");
@@ -140,11 +138,7 @@ public class JamAgent {
                         if (!accelleration.checksum(ClassFileLocator.ForClassLoader.of(classLoader), config.debugMode) && !config.devMode && !config.ignoreChecksum) {
                             throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
                         }
-                        MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy,
-                                Platform.NATIVE_SHARED_OBJ_FOLDER,
-                                Platform.NATIVE_SHARED_OBJ_PREFIX,
-                                Platform.NATIVE_SHARED_OBJ_EXT,
-                                classLoader);
+                        MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy, Platform.CURRENT, classLoader);
                         for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, classLoadingStrategy);
                         }

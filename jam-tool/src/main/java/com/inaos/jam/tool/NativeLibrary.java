@@ -21,15 +21,15 @@ import java.io.*;
 public class NativeLibrary {
 
     public static void loadLibrary(final String libraryName, ClassLoader classLoader) {
-        final String resource = Platform.NATIVE_SHARED_OBJ_FOLDER + "/" + Platform.NATIVE_SHARED_OBJ_PREFIX + libraryName;
-        final String fullPath = resource + "." + Platform.NATIVE_SHARED_OBJ_EXT;
+        String resource = Platform.CURRENT.folder + "/" + Platform.CURRENT.prefix + libraryName;
+        String fullPath = resource + "." + Platform.CURRENT.extension;
         InputStream in = classLoader.getResourceAsStream(fullPath);
         File file;
         if (in == null) {
-            throw new IllegalArgumentException("Could not find shared-object in classpath: "+fullPath);
+            throw new IllegalArgumentException("Could not find shared-object in classpath: " + fullPath);
         }
         try {
-            file = File.createTempFile(resource, "." + Platform.NATIVE_SHARED_OBJ_EXT);
+            file = File.createTempFile(resource, "." + Platform.CURRENT.extension);
             OutputStream out = new FileOutputStream(file);
             try {
                 byte[] buffer = new byte[1024];
