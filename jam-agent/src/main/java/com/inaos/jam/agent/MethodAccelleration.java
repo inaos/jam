@@ -18,7 +18,6 @@
 package com.inaos.jam.agent;
 
 import com.inaos.jam.api.Acceleration;
-import com.inaos.jam.boot.JamDestructor;
 import com.inaos.jam.tool.Platform;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
@@ -61,13 +60,13 @@ class MethodAccelleration {
             DISPATCHER,
             BINARY,
             SYSTEM_LOAD,
-            SYSTEM_LOAD_LIBRARY,
             INLINE,
             EXPECTED_NAMES,
             CAPTURE,
             CAPTURE_TYPE,
             CAPTURE_FIELDS,
-            REGISTER_DESTRUCTOR;
+            REGISTER_DESTRUCTOR,
+            UNPACK_LIBRARY;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -86,12 +85,13 @@ class MethodAccelleration {
         BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
         TypeDescription system = new TypeDescription.ForLoadedType(System.class);
         SYSTEM_LOAD = system.getDeclaredMethods().filter(named("load")).getOnly();
-        SYSTEM_LOAD_LIBRARY = system.getDeclaredMethods().filter(named("loadLibrary")).getOnly();
         TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
         CAPTURE_TYPE = capture.getDeclaredMethods().filter(named("type")).getOnly();
         CAPTURE_FIELDS = capture.getDeclaredMethods().filter(named("fields")).getOnly();
-        TypeDescription desctructor = new TypeDescription.ForLoadedType(JamDestructor.class);
-        REGISTER_DESTRUCTOR = desctructor.getDeclaredMethods().filter(named("register")).getOnly();
+        TypeDescription destructor = new TypeDescription.ForLoadedType(JamDestructor.class);
+        REGISTER_DESTRUCTOR = destructor.getDeclaredMethods().filter(named("register")).getOnly();
+        TypeDescription unpacker = new TypeDescription.ForLoadedType(JamLibraryUnpacker.class);
+        UNPACK_LIBRARY = unpacker.getDeclaredMethods().filter(named("unpack")).getOnly();
     }
 
     static List<MethodAccelleration> findAll(URL url) {
@@ -287,11 +287,13 @@ class MethodAccelleration {
                 if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
                     throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
                 }
-                initialization = MethodCall.invoke(REGISTER_DESTRUCTOR).with(dispatcher, destroyMethod.getName()).andThen(initialization);
+                initialization = MethodCall.invoke(REGISTER_DESTRUCTOR).with(dispatcher).with(destroyMethod.getName()).andThen(initialization);
             }
             types.add(byteBuddy.redefine(dispatcher, compoundLocator)
                     .invokable(isTypeInitializer())
-                    .intercept(MethodCall.invoke(SYSTEM_LOAD_LIBRARY).with(resource).andThen(initialization))
+                    .intercept(MethodCall.invoke(SYSTEM_LOAD).withMethodCall(MethodCall.invoke(UNPACK_LIBRARY)
+                            .with(dispatcher)
+                            .with(resource, platform.extension)).andThen(initialization))
                     .make());
             InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
             try {
@@ -306,7 +308,7 @@ class MethodAccelleration {
                     out.close();
                 }
                 in.close();
-                binaries.put(resource + "." + platform.extension, out.toByteArray());
+                binaries.put(resource, out.toByteArray());
             } catch (IOException e) {
                 throw new IllegalStateException(e);
             }
