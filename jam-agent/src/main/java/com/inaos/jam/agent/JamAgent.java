@@ -79,7 +79,6 @@ public class JamAgent {
             } finally {
                 bootJar.close();
             }
-
             instrumentation.appendToBootstrapClassLoaderSearch(new JarFile(materializedBootJar));
 
             final JamConfig config = new JamConfig(Arrays.asList(argument.split(",")));
