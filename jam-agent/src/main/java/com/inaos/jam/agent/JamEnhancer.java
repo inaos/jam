@@ -15,7 +15,6 @@ import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
-import java.net.URL;
 import java.util.*;
 import java.util.jar.*;
 
@@ -24,25 +23,10 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
 
 public class JamEnhancer {
 
-    private static final long MAX_OBSERVATION_COUNT_FOR_FILES = 10000;
+    private final JamConfig config;
 
-    private static final long MAX_OBSERVATION_BYTES_FOR_FILES = 1024 * 1024; // 1 MB
-
-    private final URL url;
-
-    private final boolean isDevMode, isDebugMode, shouldIgnoreChecksum;
-
-    private final Set<String> filtered;
-
-    private final File sample;
-
-    public JamEnhancer(URL url, boolean isDevMode, boolean isDebugMode, boolean shouldIgnoreChecksum, Set<String> filtered, File sample) {
-        this.url = url;
-        this.isDevMode = isDevMode;
-        this.isDebugMode = isDebugMode;
-        this.shouldIgnoreChecksum = shouldIgnoreChecksum;
-        this.filtered = filtered;
-        this.sample = sample;
+    public JamEnhancer(JamConfig config) {
+        this.config = config;
     }
 
     public void enhance(File sourceJar, File targetJar, File... additionalDependencies) throws IOException {
@@ -61,24 +45,24 @@ public class JamEnhancer {
         Map<String, byte[]> binaries = new HashMap<String, byte[]>();
         Map<String, List<String>> captures = new HashMap<String, List<String>>();
 
-        for (final MethodAccelleration accelleration : MethodAccelleration.findAll(url)) {
-            if (filtered.contains(accelleration.target()) || !accelleration.isActive(isDevMode)) {
-                if (isDebugMode) {
+        for (final MethodAccelleration accelleration : MethodAccelleration.findAll(config.url)) {
+            if (config.filtered.contains(accelleration.target()) || !accelleration.isActive(config.devMode)) {
+                if (config.debugMode) {
                     System.out.println(accelleration + " is filtered or not active in current mode");
                 }
                 continue;
             }
 
-            if (isDebugMode) {
+            if (config.debugMode) {
                 System.out.println("Applying " + accelleration.target() + " onto " + accelleration.type());
             }
-            if (!accelleration.checksum(classFileLocator, isDebugMode) && !isDevMode && !shouldIgnoreChecksum) {
+            if (!accelleration.checksum(classFileLocator, config.debugMode) && !config.devMode && !config.ignoreChecksum) {
                 throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
             }
 
             TypeDescription typeDescription = typePool.describe(accelleration.type()).resolve();
             TypeDescription adviceType = typePool.describe(accelleration.target()).resolve();
-            Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, isDevMode);
+            Advice.WithCustomMapping advice = Advice.withCustomMapping().bind(DevMode.class, config.devMode);
             DynamicType result = byteBuddy.redefine(typeDescription, classFileLocator).visit((accelleration.isTrivialEnter()
                     ? advice.to(TypeDescription.ForLoadedType.of(TrivialEnterAdvice.class), adviceType, classFileLocator)
                     : advice.to(adviceType, classFileLocator)).on(accelleration.method())).make();
@@ -108,14 +92,14 @@ public class JamEnhancer {
                 captures.put(capture.getName(), fields);
             }
 
-            if (isDebugMode) {
+            if (config.debugMode) {
                 System.out.println("Registered accelleration: " + accelleration);
             }
         }
 
         for (Map.Entry<String, List<String>> capture : captures.entrySet()) {
             for (final String field : capture.getValue()) {
-                if (isDebugMode) {
+                if (config.debugMode) {
                     System.out.println("Applying capture for " + field + " of " + capture.getKey());
                 }
                 String internalName = capture.getKey().replace('.', '/') + ".class";
@@ -185,18 +169,18 @@ public class JamEnhancer {
                     jarOutputStream.write(binary.getValue());
                     jarOutputStream.closeEntry();
                 }
-                if (isDevMode) {
+                if (config.devMode) {
                     jarOutputStream.putNextEntry(new JarEntry("META-INF/services/" + JamAgentDispatcher.class.getName()));
-                    if (sample == null) {
+                    if (config.sample == null) {
                         jarOutputStream.write(DispatcherToConsole.class.getName().getBytes("utf-8"));
                         jarOutputStream.closeEntry();
                     } else {
                         jarOutputStream.write(DispatcherToFile.class.getName().getBytes("utf-8"));
                         jarOutputStream.closeEntry();
                         jarOutputStream.putNextEntry(new JarEntry("META-INF/jam/sample.location"));
-                        jarOutputStream.write((sample.getAbsolutePath()
-                                + "\n" + MAX_OBSERVATION_COUNT_FOR_FILES
-                                + "\n" + MAX_OBSERVATION_BYTES_FOR_FILES).getBytes("utf-8"));
+                        jarOutputStream.write((config.sample.getAbsolutePath()
+                                + "\n" + JamConfig.MAX_OBSERVATION_COUNT_FOR_FILES
+                                + "\n" + JamConfig.MAX_OBSERVATION_BYTES_FOR_FILES).getBytes("utf-8"));
                         jarOutputStream.closeEntry();
                     }
                 }
@@ -215,7 +199,20 @@ public class JamEnhancer {
         }
     }
 
-    public static void main(String[] args) {
-        // TODO: add command line interface to trigger enhancement.
+    public static void main(String[] args) throws IOException {
+        if (args.length < 2) {
+            throw new IllegalArgumentException("Did not specify source and target jar as first two arguments");
+        }
+        File source = new File(args[0]), target = new File(args[1]);
+        List<String> arguments = new ArrayList<String>();
+        List<File> dependencies = new ArrayList<File>();
+        for (String arg : args) {
+            if (arg.startsWith("dependency=")) {
+                dependencies.add(new File(arg.substring("dependency=".length())));
+            } else {
+                arguments.add(arg);
+            }
+        }
+        new JamEnhancer(new JamConfig(arguments)).enhance(source, target, dependencies.toArray(new File[0]));
     }
 }
