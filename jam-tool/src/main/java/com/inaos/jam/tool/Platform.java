@@ -41,21 +41,23 @@ public class Platform {
     static {
         String osArch = getSystemProperty("os.arch"), osName = getSystemProperty("os.name");
         String extension, prefix, folder;
-        if ("amd64".equals(osArch)) {
-            folder = "linux-amd64";
-        } else if ("x86".equals(osArch)) {
-            folder = "linux-i368";
-        } else {
-            throw new IllegalArgumentException("Operating System Architecture not supported: " + osArch);
-        }
         if (isOsMatchesName(osName, "Linux") || isOsMatchesName(osName, "LINUX")) {
             extension = "so";
             prefix = "lib";
+            folder = "linux-";
         } else if (isOsMatchesName(osName, "Windows")) {
             extension = "dll";
             prefix = "";
+            folder = "win32-";
         } else {
             throw new IllegalArgumentException("Operating System not supported: " + osName);
+        }
+        if ("amd64".equals(osArch)) {
+            folder += "amd64";
+        } else if ("x86".equals(osArch)) {
+            folder += "i368";
+        } else {
+            throw new IllegalArgumentException("Operating System Architecture not supported: " + osArch);
         }
         CURRENT = new Platform(extension, prefix, folder);
     }
