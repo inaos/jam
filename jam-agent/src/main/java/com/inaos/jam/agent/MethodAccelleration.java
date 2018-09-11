@@ -304,7 +304,7 @@ class MethodAccelleration {
                     public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
                         if ((access & Opcodes.ACC_BRIDGE) == 0
                                 && name.equals(annotation.getValue(METHOD).resolve(String.class))
-                                && sb.toString().equals(desc)) {
+                                && desc.startsWith(sb.toString())) {
                             methodFound = true;
                             return new CheckSumVisitor() {
                                 @Override
