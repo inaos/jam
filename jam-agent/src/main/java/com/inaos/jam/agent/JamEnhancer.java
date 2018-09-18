@@ -32,7 +32,6 @@ import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.pool.TypePool;
 
 import java.io.*;
-import java.net.URL;
 import java.util.*;
 import java.util.jar.*;
 
