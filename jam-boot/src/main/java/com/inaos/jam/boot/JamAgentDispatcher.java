@@ -16,7 +16,17 @@
 
 package com.inaos.jam.boot;
 
+import java.util.Iterator;
+import java.util.ServiceLoader;
+
 public abstract class JamAgentDispatcher {
+
+    static {
+        Iterator<JamAgentDispatcher> it = ServiceLoader.load(JamAgentDispatcher.class).iterator();
+        if (it.hasNext()) {
+            dispatcher = it.next();
+        }
+    }
 
     private static final Object NOOP = new Object();
 

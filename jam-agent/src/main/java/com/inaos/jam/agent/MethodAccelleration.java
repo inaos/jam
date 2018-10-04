@@ -18,6 +18,7 @@
 package com.inaos.jam.agent;
 
 import com.inaos.jam.api.Acceleration;
+import com.inaos.jam.tool.Platform;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.builder.AgentBuilder;
 import net.bytebuddy.asm.Advice;
@@ -63,7 +64,9 @@ class MethodAccelleration {
             EXPECTED_NAMES,
             CAPTURE,
             CAPTURE_TYPE,
-            CAPTURE_FIELDS;
+            CAPTURE_FIELDS,
+            REGISTER_DESTRUCTOR,
+            UNPACK_LIBRARY;
 
     static {
         TypeDescription accelleration = new TypeDescription.ForLoadedType(Acceleration.class);
@@ -85,6 +88,10 @@ class MethodAccelleration {
         TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
         CAPTURE_TYPE = capture.getDeclaredMethods().filter(named("type")).getOnly();
         CAPTURE_FIELDS = capture.getDeclaredMethods().filter(named("fields")).getOnly();
+        TypeDescription destructor = new TypeDescription.ForLoadedType(JamDestructor.class);
+        REGISTER_DESTRUCTOR = destructor.getDeclaredMethods().filter(named("register")).getOnly();
+        TypeDescription unpacker = new TypeDescription.ForLoadedType(JamLibraryUnpacker.class);
+        UNPACK_LIBRARY = unpacker.getDeclaredMethods().filter(named("unpack")).getOnly();
     }
 
     static List<MethodAccelleration> findAll(URL url) {
@@ -156,7 +163,11 @@ class MethodAccelleration {
         this.classLoader = classLoader;
     }
 
-    AgentBuilder.RawMatcher type(boolean noExpectedName) {
+    String type() {
+        return annotation.getValue(TYPE).resolve(TypeDescription.class).getName();
+    }
+
+    AgentBuilder.RawMatcher typeMatcher(boolean noExpectedName) {
         AgentBuilder.RawMatcher matcher = new AgentBuilder.RawMatcher.ForElementMatchers(named(annotation.getValue(TYPE)
                 .resolve(TypeDescription.class)
                 .getName()));
@@ -204,15 +215,15 @@ class MethodAccelleration {
         return classFileLocator;
     }
 
-    Binaries binaries(ByteBuddy byteBuddy, String folder, String prefix, String extension, ClassLoader userLoader) {
+    LiveBinaries liveBinaries(ByteBuddy byteBuddy, Platform platform, ClassLoader userLoader) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         List<Runnable> destructions = new ArrayList<Runnable>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = folder + "/" + prefix + library.getValue(BINARY).resolve(String.class);
-            InputStream in = classLoader.getResourceAsStream(resource + "." + extension);
+            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARY).resolve(String.class);
+            InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
             File file;
             try {
-                file = File.createTempFile(resource, "." + extension);
+                file = File.createTempFile(resource, "." + platform.extension);
                 OutputStream out = new FileOutputStream(file);
                 try {
                     byte[] buffer = new byte[1024];
@@ -253,7 +264,56 @@ class MethodAccelleration {
                     .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()).andThen(initialization))
                     .make());
         }
-        return new Binaries(types, destructions);
+        return new LiveBinaries(types, destructions);
+    }
+
+    StaleBinaries staleBinaries(ByteBuddy byteBuddy, Platform platform, ClassFileLocator classFileLocator) {
+        Map<String, byte[]> binaries = new HashMap<String, byte[]>();
+        List<DynamicType> types = new ArrayList<DynamicType>();
+        for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
+            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARY).resolve(String.class);
+            TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
+            ClassFileLocator compoundLocator = new ClassFileLocator.Compound(this.classFileLocator, classFileLocator);
+            dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
+
+            Implementation initialization = StubMethod.INSTANCE;
+            for (MethodDescription initMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Init.class))) {
+                if (!initMethod.isStatic() || !initMethod.getParameters().isEmpty() || !initMethod.getReturnType().represents(void.class)) {
+                    throw new IllegalStateException("Stateful initializer method: " + initMethod);
+                }
+                initialization = MethodCall.invoke(initMethod).andThen(initialization);
+            }
+            for (MethodDescription destroyMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Destroy.class))) {
+                if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
+                    throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
+                }
+                initialization = MethodCall.invoke(REGISTER_DESTRUCTOR).with(dispatcher).with(destroyMethod.getName()).andThen(initialization);
+            }
+            types.add(byteBuddy.redefine(dispatcher, compoundLocator)
+                    .invokable(isTypeInitializer())
+                    .intercept(MethodCall.invoke(SYSTEM_LOAD).withMethodCall(MethodCall.invoke(UNPACK_LIBRARY)
+                            .with(dispatcher)
+                            .with(resource, platform.extension)).andThen(initialization))
+                    .make());
+            InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
+            try {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                try {
+                    byte[] buffer = new byte[1024];
+                    int length;
+                    while ((length = in.read(buffer)) != -1) {
+                        out.write(buffer, 0, length);
+                    }
+                } finally {
+                    out.close();
+                }
+                in.close();
+                binaries.put(resource, out.toByteArray());
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            }
+        }
+        return new StaleBinaries(types, binaries);
     }
 
     List<Capture> captures() {
@@ -278,62 +338,58 @@ class MethodAccelleration {
         return inlined;
     }
 
-    boolean checksum(final ClassLoader classLoader, final boolean debug) {
+    boolean checksum(final ClassFileLocator classFileLocator, final boolean debug) {
         List<String> checksums = Arrays.asList(annotation.getValue(CHECKSUM).resolve(String[].class));
-        InputStream in = classLoader.getResourceAsStream(annotation.getValue(TYPE)
-                .resolve(TypeDescription.class)
-                .getInternalName() + ".class");
-        if (in == null) {
+        ClassFileLocator.Resolution resolution;
+        try {
+            resolution = classFileLocator.locate(annotation.getValue(TYPE).resolve(TypeDescription.class).getName());
+        } catch (IOException e) {
+            if (debug) {
+                System.out.println("I/O error during checksum computation: " + e.getMessage());
+            }
+            resolution = null;
+        }
+        if (resolution == null || !resolution.isResolved()) {
             if (debug) {
                 System.out.println("Could not locate class file for computing checksum for: " + this);
             }
             return checksums.isEmpty();
         }
         final String[] computed = new String[1];
-        try {
-            try {
-                final StringBuilder sb = new StringBuilder().append("(");
-                for (TypeDescription typeDescription : annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)) {
-                    sb.append(typeDescription.getDescriptor());
-                }
-                sb.append(")");
-                new ClassReader(in).accept(new ClassVisitor(Opcodes.ASM6) {
-                    private boolean methodFound;
-
-                    @Override
-                    public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-                        if ((access & Opcodes.ACC_BRIDGE) == 0
-                                && name.equals(annotation.getValue(METHOD).resolve(String.class))
-                                && desc.startsWith(sb.toString())) {
-                            methodFound = true;
-                            return new CheckSumVisitor() {
-                                @Override
-                                void onChecksum(String checksum) {
-                                    computed[0] = checksum;
-                                }
-                            };
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    public void visitEnd() {
-                        if (debug && !methodFound) {
-                            System.out.println("Could not locate method " + annotation.getValue(METHOD).resolve(String.class)
-                                    + sb.toString()
-                                    + " in " + annotation.getValue(TYPE).resolve(TypeDescription.class).getName()
-                                    + " of " + classLoader);
-                        }
-                    }
-                }, ClassReader.SKIP_DEBUG);
-            } finally {
-                in.close();
-            }
-        } catch (IOException e) {
-            if (debug) {
-                System.out.println("I/O error during checksum computation: " + e.getMessage());
-            }
+        final StringBuilder sb = new StringBuilder().append("(");
+        for (TypeDescription typeDescription : annotation.getValue(PARAMETERS).resolve(TypeDescription[].class)) {
+            sb.append(typeDescription.getDescriptor());
         }
+        sb.append(")");
+        new ClassReader(resolution.resolve()).accept(new ClassVisitor(Opcodes.ASM6) {
+            private boolean methodFound;
+
+            @Override
+            public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+                if ((access & Opcodes.ACC_BRIDGE) == 0
+                        && name.equals(annotation.getValue(METHOD).resolve(String.class))
+                        && desc.startsWith(sb.toString())) {
+                    methodFound = true;
+                    return new CheckSumVisitor() {
+                        @Override
+                        void onChecksum(String checksum) {
+                            computed[0] = checksum;
+                        }
+                    };
+                }
+                return null;
+            }
+
+            @Override
+            public void visitEnd() {
+                if (debug && !methodFound) {
+                    System.out.println("Could not locate method " + annotation.getValue(METHOD).resolve(String.class)
+                            + sb.toString()
+                            + " in " + annotation.getValue(TYPE).resolve(TypeDescription.class).getName()
+                            + " of " + classLoader);
+                }
+            }
+        }, ClassReader.SKIP_DEBUG);
         if (computed[0] == null) {
             if (debug) {
                 System.out.println("Could not compute checksum for " + this + " (MD5 available: " + CheckSumVisitor.isMd5Available() + ")");
@@ -369,15 +425,27 @@ class MethodAccelleration {
         return sb.append(")").toString();
     }
 
-    static class Binaries {
+    static class LiveBinaries {
 
         final List<DynamicType.Unloaded<?>> types;
 
         final List<Runnable> destructions;
 
-        private Binaries(List<DynamicType.Unloaded<?>> types, List<Runnable> destructions) {
+        private LiveBinaries(List<DynamicType.Unloaded<?>> types, List<Runnable> destructions) {
             this.types = types;
             this.destructions = destructions;
+        }
+    }
+
+    static class StaleBinaries {
+
+        final List<DynamicType> types;
+
+        final Map<String, byte[]> binaries;
+
+        private StaleBinaries(List<DynamicType> types, Map<String, byte[]> binaries) {
+            this.types = types;
+            this.binaries = binaries;
         }
     }
 

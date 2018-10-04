@@ -5,7 +5,7 @@
 
 	<groupId>com.inaos.jam</groupId>
 	<artifactId>jam-parent</artifactId>
-	<version>1.0.6-SNAPSHOT</version>
+	<version>1.0.7</version>
 
 	<name>JAM</name>
 	<description>Java Acceleration Modules</description>
@@ -56,7 +56,7 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.target>1.6</maven.compiler.target>
 		<maven.compiler.source>1.6</maven.compiler.source>
-		<bytebuddy.version>1.8.15</bytebuddy.version>
+		<bytebuddy.version>1.8.21</bytebuddy.version>
 		<weaklockfree.version>0.12</weaklockfree.version>
 		<kryo.version>4.0.0</kryo.version>
 		<jmh.version>1.20</jmh.version>

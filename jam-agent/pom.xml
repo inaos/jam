@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.inaos.jam</groupId>
         <artifactId>jam-parent</artifactId>
-        <version>1.0.6-SNAPSHOT</version>
+        <version>1.0.7</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -117,6 +117,7 @@
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <manifestEntries>
+                                        <Main-Class>com.inaos.jam.agent.JamEnhancer</Main-Class>
                                         <Agent-Class>com.inaos.jam.agent.JamAgent</Agent-Class>
                                         <Premain-Class>com.inaos.jam.agent.JamAgent</Premain-Class>
                                         <Can-Retransform-Classes>true</Can-Retransform-Classes>

@@ -16,7 +16,17 @@
 
 package com.inaos.jam.boot;
 
+import java.util.Iterator;
+import java.util.ServiceLoader;
+
 public abstract class JamObjectCapture {
+
+    static {
+        Iterator<JamObjectCapture> it = ServiceLoader.load(JamObjectCapture.class).iterator();
+        if (it.hasNext()) {
+            dispatcher = it.next();
+        }
+    }
 
     public static volatile JamObjectCapture dispatcher;
 
