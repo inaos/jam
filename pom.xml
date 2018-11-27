@@ -5,7 +5,7 @@
 
 	<groupId>com.inaos.jam</groupId>
 	<artifactId>jam-parent</artifactId>
-	<version>1.0.9</version>
+	<version>1.0.10-SNAPSHOT</version>
 
 	<name>JAM</name>
 	<description>Java Acceleration Modules</description>
