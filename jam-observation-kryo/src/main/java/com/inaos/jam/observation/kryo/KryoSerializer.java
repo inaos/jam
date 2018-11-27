@@ -31,7 +31,8 @@ public class KryoSerializer {
 
     public KryoSerializer() {
         kryo = new Kryo();
-        kryo.setInstantiatorStrategy(new StdInstantiatorStrategy());
+        ((Kryo.DefaultInstantiatorStrategy)kryo.getInstantiatorStrategy()).setFallbackInstantiatorStrategy(
+                new StdInstantiatorStrategy());
     }
 
     public KryoSerializer(Kryo kryo) {
