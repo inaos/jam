@@ -218,9 +218,9 @@ class MethodAccelleration {
     LiveBinaries liveBinaries(ByteBuddy byteBuddy, Platform platform, ClassLoader userLoader, File binaryLocation) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         List<Runnable> destructions = new ArrayList<Runnable>();
-        for (AnnotationDescription libraries : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
+        for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
             List<File> files = new ArrayList<File>();
-            for (String binary : libraries.getValue(BINARIES).resolve(String[].class)) {
+            for (String binary : library.getValue(BINARIES).resolve(String[].class)) {
                 String resource = platform.folder + "/" + platform.prefix + binary;
                 InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
                 if (in == null) {
@@ -247,7 +247,7 @@ class MethodAccelleration {
                 }
                 files.add(file);
             }
-            TypeDescription dispatcher = libraries.getValue(DISPATCHER).resolve(TypeDescription.class);
+            TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
             ClassFileLocator compoundLocator = new ClassFileLocator.Compound(classFileLocator, ClassFileLocator.ForClassLoader.of(userLoader));
             dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
 
@@ -269,9 +269,8 @@ class MethodAccelleration {
                 destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
             }
             Implementation.Composable loadLibraries = StubMethod.INSTANCE;
-            System.out.println("Loading files: " + files);
             for (File file : files) {
-                loadLibraries.andThen(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()));
+                loadLibraries = loadLibraries.andThen(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()));
             }
             types.add(byteBuddy.redefine(dispatcher, compoundLocator)
                     .invokable(isTypeInitializer())
