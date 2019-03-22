@@ -56,10 +56,10 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.target>1.6</maven.compiler.target>
 		<maven.compiler.source>1.6</maven.compiler.source>
-		<bytebuddy.version>1.8.21</bytebuddy.version>
+		<bytebuddy.version>1.9.11</bytebuddy.version>
 		<weaklockfree.version>0.12</weaklockfree.version>
 		<kryo.version>4.0.0</kryo.version>
-		<jmh.version>1.20</jmh.version>
+		<jmh.version>1.21</jmh.version>
 		<junit.version>4.12</junit.version>
 	</properties>
 
@@ -102,6 +102,7 @@
 										<exclude>com.squareup:javapoet</exclude>
 										<exclude>com.beust:jcommander</exclude>
 										<exclude>org.openjdk.jmh</exclude>
+										<exclude>net.bytebuddy:*</exclude>
 									</excludes>
 								</enforceBytecodeVersion>
 							</rules>

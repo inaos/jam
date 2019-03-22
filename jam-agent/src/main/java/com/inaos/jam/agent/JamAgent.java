@@ -147,7 +147,7 @@ public class JamAgent {
                         }
                         return builder;
                     }
-                }).transform(adviceTransformer).asDecorator();
+                }).transform(adviceTransformer);
                 for (MethodAccelleration.Capture capture : accelleration.captures()) {
                     AgentBuilder.Identified.Extendable identified = builder.type(named(capture.getName())).transform(AgentBuilder.Transformer.NoOp.INSTANCE);
                     for (final String field : capture.getField()) {
@@ -174,7 +174,7 @@ public class JamAgent {
                                         }).to(CaptureAdvice.class).on(isConstructor()));
                             }
                         });
-                        builder = identified.asDecorator();
+                        builder = identified;
                     }
                 }
                 if (config.debugMode) {
