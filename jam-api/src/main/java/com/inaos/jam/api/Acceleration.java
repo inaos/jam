@@ -52,7 +52,7 @@ public @interface Acceleration {
 
         Class<?> dispatcher();
 
-        String binary();
+        String[] binaries();
 
         @Retention(RetentionPolicy.RUNTIME)
         @Target(ElementType.METHOD)

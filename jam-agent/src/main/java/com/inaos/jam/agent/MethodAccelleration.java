@@ -58,7 +58,7 @@ class MethodAccelleration {
             APPLICATION,
             SIMPLE_ENTRY,
             DISPATCHER,
-            BINARY,
+            BINARIES,
             SYSTEM_LOAD,
             INLINE,
             EXPECTED_NAMES,
@@ -82,7 +82,7 @@ class MethodAccelleration {
         CAPTURE = accelleration.getDeclaredMethods().filter(named("capture")).getOnly();
         TypeDescription library = new TypeDescription.ForLoadedType(Acceleration.Library.class);
         DISPATCHER = library.getDeclaredMethods().filter(named("dispatcher")).getOnly();
-        BINARY = library.getDeclaredMethods().filter(named("binary")).getOnly();
+        BINARIES = library.getDeclaredMethods().filter(named("binaries")).getOnly();
         TypeDescription system = new TypeDescription.ForLoadedType(System.class);
         SYSTEM_LOAD = system.getDeclaredMethods().filter(named("load")).getOnly();
         TypeDescription capture = new TypeDescription.ForLoadedType(Acceleration.Capture.class);
@@ -218,27 +218,31 @@ class MethodAccelleration {
     LiveBinaries liveBinaries(ByteBuddy byteBuddy, Platform platform, ClassLoader userLoader) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         List<Runnable> destructions = new ArrayList<Runnable>();
-        for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARY).resolve(String.class);
-            InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
-            File file;
-            try {
-                file = File.createTempFile(resource, "." + platform.extension);
-                OutputStream out = new FileOutputStream(file);
+        for (AnnotationDescription libraries : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
+            List<File> files = new ArrayList<File>();
+            for (String binary : libraries.getValue(BINARIES).resolve(String[].class)) {
+                String resource = platform.folder + "/" + platform.prefix + binary;
+                InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
+                File file;
                 try {
-                    byte[] buffer = new byte[1024];
-                    int length;
-                    while ((length = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, length);
+                    file = File.createTempFile(resource, "." + platform.extension);
+                    OutputStream out = new FileOutputStream(file);
+                    try {
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while ((length = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, length);
+                        }
+                    } finally {
+                        out.close();
                     }
-                } finally {
-                    out.close();
+                    in.close();
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
                 }
-                in.close();
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
+                files.add(file);
             }
-            TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
+            TypeDescription dispatcher = libraries.getValue(DISPATCHER).resolve(TypeDescription.class);
             ClassFileLocator compoundLocator = new ClassFileLocator.Compound(classFileLocator, ClassFileLocator.ForClassLoader.of(userLoader));
             dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
 
@@ -259,9 +263,13 @@ class MethodAccelleration {
             if (!destructionMethods.isEmpty()) {
                 destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
             }
+            Implementation.Composable loadLibraries = StubMethod.INSTANCE;
+            for (File file : files) {
+                loadLibraries.andThen(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()));
+            }
             types.add(byteBuddy.redefine(dispatcher, compoundLocator)
                     .invokable(isTypeInitializer())
-                    .intercept(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()).andThen(initialization))
+                    .intercept(loadLibraries.andThen(initialization))
                     .make());
         }
         return new LiveBinaries(types, destructions);
@@ -271,7 +279,7 @@ class MethodAccelleration {
         Map<String, byte[]> binaries = new HashMap<String, byte[]>();
         List<DynamicType> types = new ArrayList<DynamicType>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARY).resolve(String.class);
+            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARIES).resolve(String.class);
             TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
             ClassFileLocator compoundLocator = new ClassFileLocator.Compound(this.classFileLocator, classFileLocator);
             dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
