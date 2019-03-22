@@ -223,6 +223,9 @@ class MethodAccelleration {
             for (String binary : libraries.getValue(BINARIES).resolve(String[].class)) {
                 String resource = platform.folder + "/" + platform.prefix + binary;
                 InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
+                if (in == null) {
+                    throw new IllegalArgumentException("Cannot find resource: " + resource + "." + platform.extension);
+                }
                 File file;
                 try {
                     file = binaryLocation == null
@@ -266,6 +269,7 @@ class MethodAccelleration {
                 destructions.add(new Destruction(userLoader, dispatcher.getName(), destructionMethods));
             }
             Implementation.Composable loadLibraries = StubMethod.INSTANCE;
+            System.out.println("Loading files: " + files);
             for (File file : files) {
                 loadLibraries.andThen(MethodCall.invoke(SYSTEM_LOAD).with(file.getAbsolutePath()));
             }

@@ -52,7 +52,7 @@ public class JamConfig {
     JamConfig(List<String> arguments) throws MalformedURLException {
         boolean devMode = false, expectedName = false, debugMode = false, ignoreChecksum = false;
         URL url = null;
-        File sample = null, libraryLocation = null;
+        File sample = null, binaryLocation = null;
         filtered = new HashSet<String>();
 
         for (String config : arguments) {
@@ -69,12 +69,12 @@ public class JamConfig {
                 sample = new File(pair[1]);
             } else if (pair[0].equals("binaryLocation")) {
                 if (pair[1].equalsIgnoreCase("user")) {
-                    libraryLocation = new File(System.getProperty("user.home"), ".jam");
-                    if (!libraryLocation.isDirectory() && !libraryLocation.mkdirs()) {
-                        throw new IllegalArgumentException("Could not create " + libraryLocation);
+                    binaryLocation = new File(System.getProperty("user.home"), ".jam");
+                    if (!binaryLocation.isDirectory() && !binaryLocation.mkdirs()) {
+                        throw new IllegalArgumentException("Could not create " + binaryLocation);
                     }
                 } else {
-                    libraryLocation = new File(pair[1]);
+                    binaryLocation = new File(pair[1]);
                 }
             } else if (pair[0].equals("debugMode")) {
                 debugMode = Boolean.parseBoolean(pair[1]);
@@ -97,6 +97,6 @@ public class JamConfig {
         this.ignoreChecksum = ignoreChecksum;
         this.url = url;
         this.sample = sample;
-        this.binaryLocation = libraryLocation;
+        this.binaryLocation = binaryLocation;
     }
 }
