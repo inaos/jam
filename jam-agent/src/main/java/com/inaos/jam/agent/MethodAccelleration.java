@@ -215,7 +215,7 @@ class MethodAccelleration {
         return classFileLocator;
     }
 
-    LiveBinaries liveBinaries(ByteBuddy byteBuddy, Platform platform, ClassLoader userLoader) {
+    LiveBinaries liveBinaries(ByteBuddy byteBuddy, Platform platform, ClassLoader userLoader, File binaryLocation) {
         List<DynamicType.Unloaded<?>> types = new ArrayList<DynamicType.Unloaded<?>>();
         List<Runnable> destructions = new ArrayList<Runnable>();
         for (AnnotationDescription libraries : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
@@ -225,7 +225,9 @@ class MethodAccelleration {
                 InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
                 File file;
                 try {
-                    file = File.createTempFile(resource, "." + platform.extension);
+                    file = binaryLocation == null
+                            ? File.createTempFile(resource, "." + platform.extension)
+                            : new File(binaryLocation, resource + "." + platform.extension);
                     OutputStream out = new FileOutputStream(file);
                     try {
                         byte[] buffer = new byte[1024];

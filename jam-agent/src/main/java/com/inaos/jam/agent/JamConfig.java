@@ -34,24 +34,25 @@ public class JamConfig {
 
     final boolean devMode, expectedName, debugMode, ignoreChecksum;
 
-    final File sample;
+    final File sample, binaryLocation;
 
     final Set<String> filtered;
 
-    public JamConfig(URL url, boolean devMode, boolean expectedName, boolean debugMode, boolean ignoreChecksum, File sample, Set<String> filtered) {
+    public JamConfig(URL url, boolean devMode, boolean expectedName, boolean debugMode, boolean ignoreChecksum, File sample, File binaryLocation, Set<String> filtered) {
         this.url = url;
         this.devMode = devMode;
         this.expectedName = expectedName;
         this.debugMode = debugMode;
         this.ignoreChecksum = ignoreChecksum;
         this.sample = sample;
+        this.binaryLocation = binaryLocation;
         this.filtered = filtered;
     }
 
     JamConfig(List<String> arguments) throws MalformedURLException {
         boolean devMode = false, expectedName = false, debugMode = false, ignoreChecksum = false;
         URL url = null;
-        File sample = null;
+        File sample = null, libraryLocation = null;
         filtered = new HashSet<String>();
 
         for (String config : arguments) {
@@ -66,6 +67,8 @@ public class JamConfig {
                 url = new URL(pair[1]);
             } else if (pair[0].equals("sample")) {
                 sample = new File(pair[1]);
+            } else if (pair[0].equals("binaryLocation")) {
+                libraryLocation = new File(pair[1]);
             } else if (pair[0].equals("debugMode")) {
                 debugMode = Boolean.parseBoolean(pair[1]);
             } else if (pair[0].equals("filter")) {
@@ -87,5 +90,6 @@ public class JamConfig {
         this.ignoreChecksum = ignoreChecksum;
         this.url = url;
         this.sample = sample;
+        this.binaryLocation = libraryLocation;
     }
 }

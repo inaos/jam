@@ -137,7 +137,7 @@ public class JamAgent {
                         if (!accelleration.checksum(ClassFileLocator.ForClassLoader.of(classLoader), config.debugMode) && !config.devMode && !config.ignoreChecksum) {
                             throw new IllegalStateException("Could not apply " + accelleration + " due to check sum mismatch");
                         }
-                        MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy, Platform.CURRENT, classLoader);
+                        MethodAccelleration.LiveBinaries binaries = accelleration.liveBinaries(byteBuddy, Platform.CURRENT, classLoader, config.binaryLocation);
                         for (DynamicType.Unloaded<?> type : binaries.types) {
                             type.load(classLoader, classLoadingStrategy);
                         }
