@@ -68,7 +68,14 @@ public class JamConfig {
             } else if (pair[0].equals("sample")) {
                 sample = new File(pair[1]);
             } else if (pair[0].equals("binaryLocation")) {
-                libraryLocation = new File(pair[1]);
+                if (pair[1].equalsIgnoreCase("user")) {
+                    libraryLocation = new File(System.getProperty("user.home"), ".jam");
+                    if (!libraryLocation.isDirectory() && !libraryLocation.mkdirs()) {
+                        throw new IllegalArgumentException("Could not create " + libraryLocation);
+                    }
+                } else {
+                    libraryLocation = new File(pair[1]);
+                }
             } else if (pair[0].equals("debugMode")) {
                 debugMode = Boolean.parseBoolean(pair[1]);
             } else if (pair[0].equals("filter")) {
