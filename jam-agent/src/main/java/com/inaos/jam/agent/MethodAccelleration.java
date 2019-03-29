@@ -284,46 +284,48 @@ class MethodAccelleration {
         Map<String, byte[]> binaries = new HashMap<String, byte[]>();
         List<DynamicType> types = new ArrayList<DynamicType>();
         for (AnnotationDescription library : annotation.getValue(LIBRARIES).resolve(AnnotationDescription[].class)) {
-            String resource = platform.folder + "/" + platform.prefix + library.getValue(BINARIES).resolve(String.class);
-            TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
-            ClassFileLocator compoundLocator = new ClassFileLocator.Compound(this.classFileLocator, classFileLocator);
-            dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
+            for (String binary : library.getValue(BINARIES).resolve(String[].class)) {
+                String resource = platform.folder + "/" + platform.prefix + binary;
+                TypeDescription dispatcher = library.getValue(DISPATCHER).resolve(TypeDescription.class);
+                ClassFileLocator compoundLocator = new ClassFileLocator.Compound(this.classFileLocator, classFileLocator);
+                dispatcher = TypePool.Default.WithLazyResolution.of(compoundLocator).describe(dispatcher.getName()).resolve();
 
-            Implementation initialization = StubMethod.INSTANCE;
-            for (MethodDescription initMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Init.class))) {
-                if (!initMethod.isStatic() || !initMethod.getParameters().isEmpty() || !initMethod.getReturnType().represents(void.class)) {
-                    throw new IllegalStateException("Stateful initializer method: " + initMethod);
-                }
-                initialization = MethodCall.invoke(initMethod).andThen(initialization);
-            }
-            for (MethodDescription destroyMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Destroy.class))) {
-                if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
-                    throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
-                }
-                initialization = MethodCall.invoke(REGISTER_DESTRUCTOR).with(dispatcher).with(destroyMethod.getName()).andThen(initialization);
-            }
-            types.add(byteBuddy.redefine(dispatcher, compoundLocator)
-                    .invokable(isTypeInitializer())
-                    .intercept(MethodCall.invoke(SYSTEM_LOAD).withMethodCall(MethodCall.invoke(UNPACK_LIBRARY)
-                            .with(dispatcher)
-                            .with(resource, platform.extension)).andThen(initialization))
-                    .make());
-            InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
-            try {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                try {
-                    byte[] buffer = new byte[1024];
-                    int length;
-                    while ((length = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, length);
+                Implementation initialization = StubMethod.INSTANCE;
+                for (MethodDescription initMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Init.class))) {
+                    if (!initMethod.isStatic() || !initMethod.getParameters().isEmpty() || !initMethod.getReturnType().represents(void.class)) {
+                        throw new IllegalStateException("Stateful initializer method: " + initMethod);
                     }
-                } finally {
-                    out.close();
+                    initialization = MethodCall.invoke(initMethod).andThen(initialization);
                 }
-                in.close();
-                binaries.put(resource, out.toByteArray());
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
+                for (MethodDescription destroyMethod : dispatcher.getDeclaredMethods().filter(isAnnotatedWith(Acceleration.Library.Destroy.class))) {
+                    if (!destroyMethod.isStatic() || !destroyMethod.getParameters().isEmpty() || !destroyMethod.getReturnType().represents(void.class)) {
+                        throw new IllegalStateException("Stateful destruction method: " + destroyMethod);
+                    }
+                    initialization = MethodCall.invoke(REGISTER_DESTRUCTOR).with(dispatcher).with(destroyMethod.getName()).andThen(initialization);
+                }
+                types.add(byteBuddy.redefine(dispatcher, compoundLocator)
+                        .invokable(isTypeInitializer())
+                        .intercept(MethodCall.invoke(SYSTEM_LOAD).withMethodCall(MethodCall.invoke(UNPACK_LIBRARY)
+                                .with(dispatcher)
+                                .with(resource, platform.extension)).andThen(initialization))
+                        .make());
+                InputStream in = classLoader.getResourceAsStream(resource + "." + platform.extension);
+                try {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    try {
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while ((length = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, length);
+                        }
+                    } finally {
+                        out.close();
+                    }
+                    in.close();
+                    binaries.put(resource, out.toByteArray());
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
             }
         }
         return new StaleBinaries(types, binaries);
