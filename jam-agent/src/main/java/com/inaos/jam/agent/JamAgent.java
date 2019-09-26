@@ -142,9 +142,9 @@ public class JamAgent {
                             type.load(classLoader, classLoadingStrategy);
                         }
                         if (!config.devMode) {
-                            classLoadingStrategy.load(classLoader, accelleration.inlined());
                             destructions.addAll(binaries.destructions);
                         }
+                        classLoadingStrategy.load(classLoader, accelleration.inlined());
                         return builder;
                     }
                 }).transform(adviceTransformer);
